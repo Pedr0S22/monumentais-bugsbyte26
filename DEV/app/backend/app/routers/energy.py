@@ -8,81 +8,75 @@ from ..db import get_db
 router = APIRouter(prefix="/api/v1/energy", tags=["energy"])
 
 @router.patch("")
-def update_energy(payload: schemas.EnergyUpdate, db: Session = Depends(get_db)):
+def update_energy(payload: schemas.BatteryUpdate, db: Session = Depends(get_db)):
     try:
-        # CHANGED: We now INSERT instead of UPDATE to keep a history log
         query = text("""
-            INSERT INTO energy_state (energy_percent, updated_at) 
-            VALUES (:energy, CURRENT_TIMESTAMP)
+            INSERT INTO battery (profile_id, battery_level, logged_at) 
+            VALUES (:profile_id, :battery_level, CURRENT_TIMESTAMP)
         """)
-        db.execute(query, {"energy": payload.energy_percent})
+        db.execute(query, {"profile_id": payload.profile_id, "battery_level": payload.battery_level})
         db.commit()
-        return {"status": "success", "message": "Energy logged successfully"}
+        return {"status": "success", "message": "Battery logged successfully"}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("", response_model=schemas.EnergyRead)
-def get_energy(db: Session = Depends(get_db)):
-    # CHANGED: We now order by DESC and get the newest row
+@router.get("/{profile_id}", response_model=schemas.BatteryRead)
+def get_energy(profile_id: int, db: Session = Depends(get_db)):
     query = text("""
-        SELECT energy_percent, updated_at 
-        FROM energy_state 
-        ORDER BY updated_at DESC 
+        SELECT battery_level, logged_at 
+        FROM battery 
+        WHERE profile_id = :profile_id
+        ORDER BY logged_at DESC 
         LIMIT 1
     """)
-    result = db.execute(query).fetchone()
+    result = db.execute(query, {"profile_id": profile_id}).fetchone()
     
     if result:
-        energy = result[0]
-        updated_at = result[1] 
-        if isinstance(updated_at, str):
+        battery = result[0]
+        logged_at = result[1] 
+        if isinstance(logged_at, str):
             try:
-                updated_at = datetime.fromisoformat(updated_at.replace(" ", "T"))
+                logged_at = datetime.fromisoformat(logged_at.replace(" ", "T"))
             except ValueError:
-                updated_at = None
+                logged_at = None
 
-        crash_risk = energy < 40.0
-        return schemas.EnergyRead(
-            energy_percent=round(energy, 1),
+        crash_risk = battery < 40
+        return schemas.BatteryRead(
+            battery_level=battery,
             crash_risk=crash_risk,
-            last_meal_at=updated_at
+            logged_at=logged_at
         )
     
-    # Fallback if no records exist
-    return schemas.EnergyRead(
-        energy_percent=100.0, 
+    return schemas.BatteryRead(
+        battery_level=100, 
         crash_risk=False, 
-        last_meal_at=datetime.now(timezone.utc)
+        logged_at=datetime.now(timezone.utc)
     )
 
-
-# NEW ENDPOINT: Fetch the last 24 hours of energy history
-@router.get("/history", response_model=schemas.EnergyHistoryResponse)
-def get_energy_history(db: Session = Depends(get_db)):
-    # Fetch records where the updated_at timestamp is within the last 24 hours
-    # 'datetime('now', '-24 hours')' is the SQLite syntax to do this.
+@router.get("/{profile_id}/history", response_model=schemas.BatteryHistoryResponse)
+def get_energy_history(profile_id: int, db: Session = Depends(get_db)):
     query = text("""
-        SELECT energy_percent, updated_at 
-        FROM energy_state 
-        WHERE updated_at >= datetime('now', '-24 hours')
-        ORDER BY updated_at ASC
+        SELECT battery_level, logged_at 
+        FROM battery 
+        WHERE profile_id = :profile_id AND logged_at >= datetime('now', '-24 hours')
+        ORDER BY logged_at ASC
     """)
-    results = db.execute(query).fetchall()
+    results = db.execute(query, {"profile_id": profile_id}).fetchall()
     
     history_list = []
     for row in results:
-        updated_at = row[1]
-        if isinstance(updated_at, str):
+        logged_at = row[1]
+        if isinstance(logged_at, str):
             try:
-                updated_at = datetime.fromisoformat(updated_at.replace(" ", "T"))
+                logged_at = datetime.fromisoformat(logged_at.replace(" ", "T"))
             except ValueError:
-                updated_at = None
+                logged_at = None
                 
         history_list.append({
-            "energy_percent": row[0],
-            "updated_at": updated_at
+            "battery_level": row[0],
+            "logged_at": logged_at
         })
         
-    return schemas.EnergyHistoryResponse(history=history_list)
+    return schemas.BatteryHistoryResponse(history=history_list)

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 # --- Health ---
 class HealthRead(BaseModel):
@@ -10,36 +10,50 @@ class HealthRead(BaseModel):
 # --- Chat (RAG) ---
 class ChatRequest(BaseModel):
     message: str
-    user_id: Optional[str] = None
+    profile_id: Optional[int] = None # Match your new DB logic
 
 class ChatResponse(BaseModel):
     reply: str
     source: str = "stub"
 
-# --- Energy ---
-class EnergyHistoryItem(BaseModel):
-    energy_percent: float
-    updated_at: datetime
+# --- Battery (formerly Energy) ---
+class BatteryUpdate(BaseModel):
+    profile_id: int
+    battery_level: int
 
-class EnergyHistoryResponse(BaseModel):
-    history: List[EnergyHistoryItem]
-    last_meal_at: Optional[datetime] = None
+class BatteryRead(BaseModel):
+    battery_level: int
+    crash_risk: bool
+    logged_at: Optional[datetime] = None
 
-# --- Meals ---
-# Response for the Vision POST endpoint
-class MealMetricsResponse(BaseModel):
-    status: str
-    meal_id: int
-    metrics: Dict[str, Any]
-    score: Dict[str, Any]
-
-# Represents a flattened meal + score row from our raw SQL JOIN
-class MealSummary(BaseModel):
-    id: int
-    user_id: Optional[str] = None
-    source: str
+class BatteryHistoryItem(BaseModel):
+    battery_level: int
     logged_at: datetime
-    total_score: Optional[float] = None
 
-class MealListResponse(BaseModel):
-    meals: List[MealSummary]
+class BatteryHistoryResponse(BaseModel):
+    history: List[BatteryHistoryItem]
+
+# --- Letty Historic (formerly Meals) ---
+class LettyHistoricResponse(BaseModel):
+    status: str
+    id_letty: int
+    metrics: Dict[str, Any]
+
+class LettyHistoricSummary(BaseModel):
+    id_letty: int
+    profile_id: int
+    meal: str
+    logged_at: datetime
+    protein: float
+    fiber: float
+    hydration: float
+    saturated_fat: float
+    energy: int
+    energy_boost: int
+    burn_rate_per_hour: float
+    mood: str
+    tip: str
+    focus_time: float
+
+class LettyHistoricListResponse(BaseModel):
+    meals: List[LettyHistoricSummary]
