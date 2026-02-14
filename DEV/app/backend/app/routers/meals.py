@@ -59,7 +59,7 @@ async def create_meal_from_image(
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/recent/{profile_id}", response_model=schemas.LettyHistoricListResponse)
+@router.get("{profile_id}/recent", response_model=schemas.LettyHistoricListResponse)
 def get_recent_meals(profile_id: int, db: Session = Depends(get_db)):
     query = text("""
         SELECT id_letty, profile_id, meal, logged_at, protein, fiber, hydration, 
@@ -72,11 +72,11 @@ def get_recent_meals(profile_id: int, db: Session = Depends(get_db)):
     results = db.execute(query, {"profile_id": profile_id}).fetchall()
     return schemas.LettyHistoricListResponse(meals=[dict(row._mapping) for row in results])
 
-@router.get("/all/{profile_id}", response_model=schemas.LettyHistoricListResponse)
+@router.get("/{profile_id}/all", response_model=schemas.LettyHistoricListResponse)
 def get_all_meals(profile_id: int, db: Session = Depends(get_db)):
     query = text("""
         SELECT id_letty, profile_id, meal, logged_at, protein, fiber, hydration, 
-               saturated_fat, energy, energy_boost, burn_rate_per_hour, mood, tip, focus_time
+                saturated_fat, energy, energy_boost, burn_rate_per_hour, mood, tip, focus_time
         FROM letty_historic
         WHERE profile_id = :profile_id
         ORDER BY logged_at DESC
