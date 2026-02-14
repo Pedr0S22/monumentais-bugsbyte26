@@ -30,11 +30,13 @@ def calculate_nuno_score(metrics, user_goal):
     f = metrics.get("fiber_grams", 0)
     w = metrics.get("hydration_ml", 0)
     kcal = metrics.get("energy_kcal", 1)
-    sugar = metrics.get("sugar_grams", 0)
+    sf = metrics.get("saturated_fat_grams", 0)
+    
 
     # 2. Calculate Satiety Index (SI)
     # This formula rewards Volume (Fiber/Water/Protein) relative to Calories
-    satiety_index = ((p * 2.0) + (f * 3.0) + (w * 0.2)) / kcal * 100
+    numerator=(p * 2.0) + (f * 5.0) + (w * 0.2)-(sf* 2.0)
+    satiety_index = (numerator / kcal * 100) if kcal > 0 else 0
     xp = 0
     feedback = ""
     bonus_tag = ""
@@ -42,47 +44,65 @@ def calculate_nuno_score(metrics, user_goal):
     # --- RULE SET 1: WEIGHT LOSS ("The Volume Game") ---
     if "loss" in user_goal.lower():
         # Ideal: High Satiety (>10), Low Kcal (<600)
-        if satiety_index > 10:
+        if satiety_index > 15:
             xp = 100
             feedback = "🏆 Perfect Volume! You'll feel full for hours."
             bonus_tag = "Volume King"
-        elif satiety_index > 5:
+        elif satiety_index > 8:
             xp = 75
             feedback = "Good meal, but add more veggies (fiber) next time."
         else:
             xp = 40
             feedback = "⚠️ Calorie Dense! Small portion, high energy. Watch out."
-            
-        # Penalty for Sugar in Weight Loss
-        if sugar > 15:
-            xp -= 10
-            feedback += " (Sugar spike detected!)"
 
     # --- RULE SET 2: WEIGHT GAIN ("The Density Game") ---
     elif "gain" in user_goal.lower() or "muscle" in user_goal.lower():
         # Ideal: High Calories (>500), High Protein (>25g)
         # Logic: "Little volume, lots of energy"
-        
-        if kcal > 500 and p > 25:
+        # 1. Clean Bulk (Perfect)
+        if kcal > 500 and p > 30 and sf < 10:
             xp = 100
             feedback = "🦍 BEAST MODE! High energy & protein."
             bonus_tag = "Gains Secured"
+        # 2. Dirty Bulk (Good stats, bad fat) - FIX: Changed OR to AND logic
+        elif kcal > 500 and p > 25:
+            xp = 75
+            feedback = "💪 Gains Secured. Warning: High saturated fat detected."
+            bonus_tag = "Dirty Bulk"
+        # 3. Under-eating (Failure)
         elif kcal < 300:
             xp = 30
             feedback = "❌ Too light! You need more fuel to grow."
+            bonus_tag = "Catabolic"
+        # 4. Average
         else:
-            xp = 70
-            feedback = "Good protein, but try to increase calorie density."
-
-    # --- RULE SET 3: MAINTENANCE ("The Balance Game") ---
+            xp = 60
+            feedback = "Decent protein, but try to increase calorie density."
+    # --- RULE SET 3: MAINTENANCE ---
     else:
-        # Ideal: Balanced Macros
-        if p > 20 and f > 5:
-            xp = 90
-            feedback = "Perfectly balanced."
+        # 1. PERFECT BALANCE
+        # Calories in range (400-800), Good Protein, Low Sat Fat
+        if 400 <= kcal <= 800 and p > 20 and f > 5 and sf < 8:
+            xp = 100
+            feedback = "⚖️ Perfect Balance. Stable energy, zero crash."
+            bonus_tag = "Zen Mode"
+            
+        # 2. GOOD BUT HEAVY (The "Cheat Meal" trap)
+        # Good macros but calories are blowing the budget (> 800)
+        elif kcal > 800:
+            xp = 60
+            feedback = "⚠️ Overshoot! Good nutrients, but watch the calorie surplus."
+            bonus_tag = "Heavy"
+            
+        # 3. STANDARD OKAY MEAL
+        elif p > 15 and f > 3:
+            xp = 80
+            feedback = "Solid choice. Keeps the engine running."
+            
+        # 4. POOR BALANCE
         else:
-            xp = 50
-            feedback = "A bit unbalanced. Missing protein or fiber."
+            xp = 40
+            feedback = "Unbalanced. Missing protein or fiber to sustain energy."
     return {
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "xp_earned": int(xp),
