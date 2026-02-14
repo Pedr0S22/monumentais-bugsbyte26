@@ -4,9 +4,26 @@ services:
     container_name: lettyquest-api
     environment:
       - APP_ENV=local
-      - DATABASE_URL=sqlite:///./data/app.sqlite3  # <--- MUDAR AQUI
+      - DATABASE_URL=sqlite:///./data/app.sqlite3
     ports:
       - "8000:8000"
     volumes:
+      - ./DEV/app/backend:/app # Mapeia o código para hot-reload
       - ./DEV/app/backend/data:/app/data
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+  
+  expo:
+    build: ./DEV/app/frontend/LettyQuest
+    container_name: lettyquest-app
+    environment:
+      - REACT_NATIVE_PACKAGER_HOSTNAME=193.137.91.89 # Confirma se este ainda é o teu IP (en0)
+    ports:
+      - "8081:8081"
+      - "19000:19000"
+    volumes:
+      - ./DEV/app/frontend/LettyQuest:/app # IMPORTANTE para veres mudanças no telemóvel
+      - letty_node_modules:/app/node_modules # preservar node_modules instalado na imagem (evita overwrite pelo bind mount)
+    working_dir: /app
+
+volumes:
+  letty_node_modules: {}
