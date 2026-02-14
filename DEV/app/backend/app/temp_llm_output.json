@@ -1,0 +1,19 @@
+{
+    "meal_name": "Roast Beef Dinner",
+    "nutritional_metrics": {
+        "protein_grams": 50,
+        "fiber_grams": 8,
+        "hydration_ml": 200,
+        "saturated_fat_grams": 15,
+        "energy_kcal": 650
+    },
+    "game_logic": {
+        "energy_boost": 30,
+        "burn_rate_per_hour": 10,
+        "estimated_focus_time_hours": 7
+    },
+    "letty_feedback": {
+        "mood": "Happy",
+        "tip": "Nourish and energize your day with this hearty meal!"
+    }
+}

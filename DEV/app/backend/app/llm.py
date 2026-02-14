@@ -3,6 +3,7 @@ import json
 import re
 import os
 from huggingface_hub import InferenceClient
+from dotenv import load_dotenv
 
 # Configuration
 load_dotenv()
