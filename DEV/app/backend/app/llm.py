@@ -1,15 +1,105 @@
-from .config import get_settings
+import base64
+import json
+import re
+import os
+from huggingface_hub import InferenceClient
+from dotenv import load_dotenv
 
-SYSTEM_PROMPT = (
-    "You are Letty, a friendly lettuce mascot."
-    " Be concise, encouraging, and avoid medical diagnoses or prescriptive treatment."
-    " Suggest balanced meals (protein + fiber + healthy fats) and hydration."
-    " Remind users to consult professionals for medical concerns."
+# Configuration
+load_dotenv()
+HF_TOKEN = os.getenv("token")
+client = InferenceClient(
+    model="Qwen/Qwen2.5-VL-7B-Instruct",
+    token=HF_TOKEN
 )
+def letty_nutrition_evaluator(user_profile, image_path=None, user_text=None):
+    """
+    Evaluates meals via image, text, or both.
+    Returns error 400 if the input is not a meal.
+    """
+    if not image_path and not user_text:
+        return {"error": "No input provided.", "status_code": 400}
 
+    content_list = []
+    
+    # 1. Preparar a Imagem (se existir)
+    if image_path:
+        try:
+            with open(image_path, "rb") as f:
+                base64_image = base64.b64encode(f.read()).decode("utf-8")
+            image_url = f"data:image/jpeg;base64,{base64_image}"
+            content_list.append({"type": "image_url", "image_url": {"url": image_url}})
+        except FileNotFoundError:
+            return {"error": "Image file not found.", "status_code": 400}
 
-def generate_reply(message: str) -> str:
-    # Placeholder for a local LLM adapter (e.g., Ollama/HF). In production, call the model here.
-    settings = get_settings()
-    _ = settings.llm_model  # reserved for future adapter use
-    return f"Letty here! I got your message: '{message}'. Try adding protein and fiber to keep energy steady."
+    # 2. Configurar o Prompt
+    input_desc = f"User description: {user_text}" if user_text else "Analyze the provided image."
+    
+    prompt = f"""
+    Act as Letty, a witty and supportive nutrition coach.
+    
+    CRITICAL RULE: If the user provides an image or text that is NOT related to food, you MUST return:
+    {{ "error": "The provided input is not a meal.", "status_code": 400 }}
+
+    USER PROFILE:
+    - Goal: {user_profile['goal']}
+    - Diet: {user_profile['diet_type']}
+    - Status: {user_profile['progress_status']}
+
+    TASK:
+    1. Identify ingredients. 2. Estimate Metrics. 3. Game Logic (Energy Boost 0-50, Burn Rate 2-20). 
+    4. Letty Tip (max 15 words).
+
+    RETURN ONLY JSON:
+    {{
+    "meal_name": "string",
+    "nutritional_metrics": {{ "protein_grams": int, "fiber_grams": int, "hydration_ml": int, "saturated_fat_grams": int, "energy_kcal": int }},
+    "game_logic": {{ "energy_boost": int, "burn_rate_per_hour": int, "estimated_focus_time_hours": float }},
+    "letty_feedback": {{ "mood": "Happy | Meh | Sad", "tip": "string" }}
+    }}
+    """
+    
+    content_list.insert(0, {"type": "text", "text": prompt})
+
+    try:
+        response = client.chat_completion(messages=[{"role": "user", "content": content_list}], max_tokens=900)
+        content = response.choices[0].message.content
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        return json.loads(json_match.group()) if json_match else {"error": "Invalid output"}
+    except Exception as e:
+        return {"error": str(e)}
+
+def save_llm_output(data, output_dir, filename="temp_llm_output.json"):
+    """
+    Saves the raw LLM analysis to a SPECIFIC directory.
+    Automatically creates the folder if it doesn't exist.
+    """
+    
+    if not os.path.exists(output_dir):
+        try:
+            os.makedirs(output_dir)
+            print(f"📁 Created new directory: {output_dir}")
+        except OSError as e:
+            print(f"❌ Error creating directory: {e}")
+            return
+    
+    full_path = os.path.join(output_dir, filename)
+    
+    with open(full_path, "w") as f:
+        json.dump(data, f, indent=4)
+    print(f"✅ Data passed to Game Engine: {full_path}")
+
+# --- HACKATHON DEMO ---
+if __name__ == "__main__":
+    test_user = {
+        "name": "Francisca",
+        "goal": "Weight loss and sustainable calorie deficit",
+        "diet_type": "Omnivore / Balanced",
+        "progress_status": "Emotional rollercoaster (inconsistent tracking this week)"
+    }
+    img_path = "/Users/francisca_mateus/Downloads/transferir.jpeg"
+    output_dir = "DEV/app/backend/app/llm_output"
+    print("🥬 Letty is calculating your energy boost and burn rate...")
+    result = letty_nutrition_evaluator(test_user, image_path=img_path, user_text="This is my meal for today i ialso had a soup.")
+    save_llm_output(result, output_dir)
+    print(json.dumps(result, indent=4))

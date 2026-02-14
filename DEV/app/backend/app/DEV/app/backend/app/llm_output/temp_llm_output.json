@@ -1,0 +1,4 @@
+{
+    "error": "The provided input is not a meal.",
+    "status_code": 400
+}
