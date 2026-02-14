@@ -36,7 +36,7 @@ def letty_nutrition_evaluator(image_path, user_profile):
     - Current Progress: {user_profile['progress_status']}
 
     MOTIVATION STRATEGY:
-    - Use the user's 'progress_status' to adapt your empathy level. 
+    - Use the user's 'progress_status' to adapt your empathy level.
     - Prioritize positive reinforcement to build momentum, especially if the user is struggling.
     - Avoid shaming; focus on small improvements and keeping the streak alive.
 
@@ -50,29 +50,29 @@ def letty_nutrition_evaluator(image_path, user_profile):
     2. Estimate: Protein (g), Fiber (g), Hydration (ml), Saturated Fat (g), and Energy (kcal).
     3. Calculate 'Energy Boost': How many points (0-50) this meal adds to a 100-point bar.
     4. Calculate 'Burn Rate': How many points are lost per hour after eating this.
-       - Low Burn Rate (2-5 pts/h): Complex carbs, fiber, protein (Sustained energy).
-       - High Burn Rate (15-20 pts/h): High sugar, processed food (Fast depletion).
+    - Low Burn Rate (2-5 pts/h): Complex carbs, fiber, protein (Sustained energy).
+    - High Burn Rate (15-20 pts/h): High sugar, processed food (Fast depletion).
     5. Provide a 'Letty Tip': A VERY SHORT (max 15 words) motivational tip in English.
 
     RETURN ONLY JSON:
     {{
-      "meal_name": "string",
-      "nutritional_metrics": {{
+    "meal_name": "string",
+    "nutritional_metrics": {{
         "protein_grams": int,
         "fiber_grams": int,
         "hydration_ml": int,
         "saturated_fat_grams": int,
         "energy_kcal": int
-      }},
-      "game_logic": {{
+    }},
+    "game_logic": {{
         "energy_boost": int,
         "burn_rate_per_hour": int,
         "estimated_focus_time_hours": float
-      }},
-      "letty_feedback": {{
+    }},
+    "letty_feedback": {{
         "mood": "Happy | Meh | Sad",
         "tip": "string"
-      }}
+    }}
     }}
     """
 
