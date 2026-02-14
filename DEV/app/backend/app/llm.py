@@ -128,7 +128,7 @@ if __name__ == "__main__":
     }
 
     img_path = r"C:\Users\ramya\Desktop\food picture.webp"
-    output_dir = "DEV/app/backend/app/routers/llm_output"
+    output_dir = "DEV\app\backend\app\llm_output"
     print("🥬 Letty is calculating your energy boost and burn rate...")
     result = letty_nutrition_evaluator(img_path, test_user)
     save_llm_output(result, output_dir)
