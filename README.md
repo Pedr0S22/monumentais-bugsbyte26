@@ -62,7 +62,7 @@ Until code is committed, this repo holds the blueprint; check [DEV/app/README.md
 
 ## Authors
 
-Team BugsByte 2026 — see individual profiles in [PM/profiles](PM/profiles).
+Monumentais Team BugsByte 2026 — see individual profiles in [PM/profiles](PM/profiles).
 
 ## License
 
