@@ -24,7 +24,6 @@ def load_llm_data():
 
 def calculate_nuno_score(metrics, user_goal):
     """
-    Applies the 'Nuno Principle':
     - Weight Loss = High Satiety / Low Energy (Volume)
     - Weight Gain = Low Satiety / High Energy (Density)
     """
@@ -33,8 +32,8 @@ def calculate_nuno_score(metrics, user_goal):
     p = metrics.get("protein_grams", 0)
     f = metrics.get("fiber_grams", 0)
     w = metrics.get("hydration_ml", 0)
-    kcal = metrics.get("energy_kcal", 1) # Avoid div/0
-    sugar = metrics.get("sugar_grams", 0) # Make sure LLM extracts this if possible
+    kcal = metrics.get("energy_kcal", 1)
+    sugar = metrics.get("sugar_grams", 0)
 
     # 2. Calculate Satiety Index (SI)
     # This formula rewards Volume (Fiber/Water/Protein) relative to Calories
@@ -124,22 +123,17 @@ if __name__ == "__main__":
     
     # 1. Load Raw Data
     raw_data = load_llm_data()
-    
     if raw_data:
         # In a real app, you get this from the user's login session
         # You can change this manually to test logic: "Weight gain", "Maintenance"
-        current_user_goal = "Weight loss" 
-        
+        current_user_goal = "Weight loss"
         print(f"📊 Analyzing '{raw_data['meal_name']}' for Goal: {current_user_goal}...")
-        
         # 2. Calculate Score
         score = calculate_nuno_score(raw_data["nutritional_metrics"], current_user_goal)
-        
-        # 3. Show Result
+        # 3. Show Results
         print("\n" + "="*30)
         print(f"  XP EARNED: {score['xp_earned']}")
         print(f"  FEEDBACK:  {score['feedback']}")
         print("="*30 + "\n")
-        
-        # 4. Save
+        # 4. Save to History
         update_history(score, raw_data["meal_name"])
