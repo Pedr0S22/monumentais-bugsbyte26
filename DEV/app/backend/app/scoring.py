@@ -1,131 +1,128 @@
 import json
 import os
-from datetime import datetime
 
-# --- FILE SYSTEM (No Database Needed) ---
-HISTORY_FILE = "user_meal_history.json"
+# CONFIGURATION
+INPUT_FILE = "temp_llm_output.json"
+HISTORY_FILE = "user_game_history.json"
 
-def save_meal_data(user_profile, ai_result, game_points):
-    """Saves the meal to a local JSON file."""
+def load_llm_data():
+    """Reads the raw data from the LLM."""
+    if not os.path.exists(INPUT_FILE):
+        return None
+    with open(INPUT_FILE, "r") as f:
+        return json.load(f)
+
+def calculate_nuno_score(metrics, user_goal):
+    """
+    Applies the 'Nuno Principle':
+    - Weight Loss = High Satiety / Low Energy (Volume)
+    - Weight Gain = Low Satiety / High Energy (Density)
+    """
     
-    # Create the data structure
-    entry = {
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "user": user_profile["name"],
-        "meal": ai_result["meal_name"],
-        "metrics": ai_result["nutritional_metrics"],
-        "scores": game_points
+    # 1. Extract Metrics (Safe Defaults)
+    p = metrics.get("protein_grams", 0)
+    f = metrics.get("fiber_grams", 0)
+    w = metrics.get("hydration_ml", 0)
+    kcal = metrics.get("energy_kcal", 1) # Avoid div/0
+    sugar = metrics.get("sugar_grams", 0) # Make sure LLM extracts this if possible
+
+    # 2. Calculate Satiety Index (SI)
+    # This formula rewards Volume (Fiber/Water/Protein) relative to Calories
+    satiety_index = ((p * 2.0) + (f * 3.0) + (w * 0.2)) / kcal * 100
+    
+    xp = 0
+    feedback = ""
+    bonus_tag = ""
+
+    # --- RULE SET 1: WEIGHT LOSS ("The Volume Game") ---
+    if "loss" in user_goal.lower():
+        # Ideal: High Satiety (>10), Low Kcal (<600)
+        if satiety_index > 10:
+            xp = 100
+            feedback = "🏆 Perfect Volume! You'll feel full for hours."
+            bonus_tag = "Volume King"
+        elif satiety_index > 5:
+            xp = 75
+            feedback = "Good meal, but add more veggies (fiber) next time."
+        else:
+            xp = 40
+            feedback = "⚠️ Calorie Dense! Small portion, high energy. Watch out."
+            
+        # Penalty for Sugar in Weight Loss
+        if sugar > 15:
+            xp -= 10
+            feedback += " (Sugar spike detected!)"
+
+    # --- RULE SET 2: WEIGHT GAIN ("The Density Game") ---
+    elif "gain" in user_goal.lower() or "muscle" in user_goal.lower():
+        # Ideal: High Calories (>500), High Protein (>25g)
+        # Nuno's Logic: "Little volume, lots of energy"
+        
+        density_score = kcal / (p + f + w + 1) # Simplified Density metric
+        
+        if kcal > 500 and p > 25:
+            xp = 100
+            feedback = "🦍 BEAST MODE! High energy & protein."
+            bonus_tag = "Gains Secured"
+        elif kcal < 300:
+            xp = 30
+            feedback = "❌ Too light! You need more fuel to grow."
+        else:
+            xp = 70
+            feedback = "Good protein, but try to eat more carbs."
+
+    # --- RULE SET 3: MAINTENANCE ("The Balance Game") ---
+    else:
+        # Ideal: Balanced Macros
+        if p > 20 and f > 5:
+            xp = 90
+            feedback = "Perfectly balanced."
+        else:
+            xp = 50
+            feedback = "A bit unbalanced. Missing protein or fiber."
+
+    return {
+        "xp": int(xp),
+        "level_progress": int(xp) / 1000, # Example: 1000 XP to level up
+        "satiety_index": round(satiety_index, 2),
+        "feedback": feedback,
+        "bonus": bonus_tag
     }
 
-    # Load existing history or create new
+def update_history(score_data):
+    """Saves the final score to the user's permanent history."""
+    history = []
     if os.path.exists(HISTORY_FILE):
         with open(HISTORY_FILE, "r") as f:
             try:
                 history = json.load(f)
-            except json.JSONDecodeError:
+            except:
                 history = []
-    else:
-        history = []
-
-    history.append(entry)
-
+    
+    history.append(score_data)
+    
     with open(HISTORY_FILE, "w") as f:
         json.dump(history, f, indent=4)
-    
-    return "Saved successfully!"
+    print("✅ Score saved to History!")
 
-# --- THE NUNO PRINCIPLE LOGIC ---
-def calculate_game_xp(ai_result, user_goal):
-    """
-    Calculates XP based on 3 Rules: Loss, Gain, Maintain.
-    Uses 'Satiety Index' and 'Balance'.
-    """
-    metrics = ai_result["nutritional_metrics"]
-    
-    # Extract values (prevent division by zero)
-    protein = metrics.get("protein_grams", 0)
-    fiber = metrics.get("fiber_grams", 0)
-    water = metrics.get("hydration_ml", 0)
-    cals = metrics.get("energy_kcal", 1) # avoid div by 0
-    
-    # 1. CALCULATE SATIETY INDEX (SI)
-    # Formula: (Volume Drivers) / Energy
-    # Weighted: Protein is x2 important, Fiber x3 (expands in stomach)
-    satiety_score = ((protein * 2) + (fiber * 3) + (water * 0.5)) / cals * 100
-    
-    # 2. CALCULATE BALANCE SCORE (0 to 100)
-    # A balanced meal has significant Protein AND Fiber
-    balance_points = 0
-    if protein > 20: balance_points += 40
-    elif protein > 10: balance_points += 20
-    
-    if fiber > 5: balance_points += 30
-    elif fiber > 2: balance_points += 10
-    
-    if metrics.get("saturated_fat_grams", 0) < 10: balance_points += 30
-    
-    # --- APPLY THE 3 RULES ---
-    
-    final_xp = 0
-    feedback = ""
-
-    # RULE 1: WEIGHT LOSS (The "Volume" Game)
-    # Goal: High Satiety, Moderate Calories
-    if "loss" in user_goal.lower():
-        if satiety_score > 15: # Very filling, low cal
-            final_xp = 80 + (balance_points * 0.2)
-            feedback = "🔥 Perfect! High volume, low energy."
-        elif satiety_score > 8:
-            final_xp = 60 + (balance_points * 0.2)
-            feedback = "Good, but add more veggies (fiber) next time."
-        else:
-            final_xp = 30
-            feedback = "⚠️ Warning: Calorie dense but low satiety. You will feel hungry soon."
-
-    # RULE 2: WEIGHT GAIN (The "Density" Game)
-    # Goal: High Calories, Moderate Satiety (Don't get too full)
-    # As Nuno said: "Pouco volume e muita energia"
-    elif "gain" in user_goal.lower() or "muscle" in user_goal.lower():
-        if cals > 500 and protein > 25:
-            final_xp = 90
-            feedback = "💪 Beast Mode! High energy and protein."
-        elif cals < 300:
-            final_xp = 40
-            feedback = "Not enough fuel for growth. Eat more!"
-        else:
-            final_xp = 60
-            feedback = "Decent, but try to increase calorie density."
-
-    # RULE 3: MAINTENANCE (The "Balance" Game)
-    else:
-        final_xp = balance_points
-        feedback = "Balanced and steady."
-
-    return {
-        "xp_awarded": int(final_xp),
-        "satiety_index": round(satiety_score, 2),
-        "balance_score": balance_points,
-        "coach_logic": feedback
-    }
-
-# --- TEST IT ---
+# --- MAIN EXECUTION ---
 if __name__ == "__main__":
-    # Fake AI Result (Simulating your output)
-    fake_ai_output = {
-        "meal_name": "Chicken Salad",
-        "nutritional_metrics": {
-            "protein_grams": 30,
-            "fiber_grams": 8,
-            "hydration_ml": 150,
-            "saturated_fat_grams": 2,
-            "energy_kcal": 350
-        }
-    }
+    # 1. Load Raw Data
+    raw_data = load_llm_data()
     
-    # Test for Weight Loss User
-    print("--- User Goal: Weight Loss ---")
-    xp_result = calculate_game_xp(fake_ai_output, "Weight loss")
-    print(json.dumps(xp_result, indent=4))
-    
-    # Save it
-    save_meal_data({"name": "Francisca"}, fake_ai_output, xp_result)
+    if raw_data:
+        # In a real app, you get this from the user's login session
+        current_user_goal = "Weight loss"
+        
+        print(f"📊 Analyzing for Goal: {current_user_goal}...")
+        
+        # 2. Calculate Score
+        score = calculate_nuno_score(raw_data["nutritional_metrics"], current_user_goal)
+        
+        # 3. Show Result
+        print(json.dumps(score, indent=4))
+        
+        # 4. Save
+        update_history(score)
+    else:
+        print("❌ No new meal data found. Run llm_analyzer.py first!")
