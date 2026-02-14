@@ -7,11 +7,11 @@ from ..db import get_db
 
 router = APIRouter(prefix="/api/v1/energy", tags=["energy"])
 
-@router.patch("")
+@router.post("")
 def update_energy(payload: schemas.BatteryUpdate, db: Session = Depends(get_db)):
     try:
         query = text("""
-            INSERT INTO battery (profile_id, battery_level, logged_at) 
+            INSERT INTO battery (profile_id, battery_level, logged_at)
             VALUES (:profile_id, :battery_level, CURRENT_TIMESTAMP)
         """)
         db.execute(query, {"profile_id": payload.profile_id, "battery_level": payload.battery_level})
@@ -22,13 +22,13 @@ def update_energy(payload: schemas.BatteryUpdate, db: Session = Depends(get_db))
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{profile_id}", response_model=schemas.BatteryRead)
+@router.get("/{profile_id}/all", response_model=schemas.BatteryRead)
 def get_energy(profile_id: int, db: Session = Depends(get_db)):
     query = text("""
-        SELECT battery_level, logged_at 
-        FROM battery 
+        SELECT battery_level, logged_at
+        FROM battery
         WHERE profile_id = :profile_id
-        ORDER BY logged_at DESC 
+        ORDER BY logged_at DESC
         LIMIT 1
     """)
     result = db.execute(query, {"profile_id": profile_id}).fetchone()
