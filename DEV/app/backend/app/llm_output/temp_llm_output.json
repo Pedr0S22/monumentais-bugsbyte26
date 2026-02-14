@@ -1,0 +1,19 @@
+{
+    "meal_name": "McChicken Meal",
+    "nutritional_metrics": {
+        "protein_grams": 15,
+        "fiber_grams": 3,
+        "hydration_ml": 250,
+        "saturated_fat_grams": 8,
+        "energy_kcal": 800
+    },
+    "game_logic": {
+        "energy_boost": 20,
+        "burn_rate_per_hour": 5,
+        "estimated_focus_time_hours": 4
+    },
+    "letty_feedback": {
+        "mood": "Sad",
+        "tip": "Balance your diet with healthier options for lasting energy."
+    }
+}
