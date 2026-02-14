@@ -4,8 +4,8 @@ from sqlalchemy import text
 from typing import Optional
 from .. import schemas
 from ..db import get_db
+from datetime import datetime
 
-router = APIRouter(prefix="/api/v1/meals", tags=["meals"])
 
 import os
 import shutil
@@ -14,162 +14,212 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 # Importa a tua função do ficheiro llm.py
 from ..llm import letty_nutrition_evaluator 
+from ..scoring import calculate_nuno_score
 
 router = APIRouter(prefix="/api/v1/meals", tags=["meals"])
-
 @router.post("")
 async def create_meal(
     profile_id: int = Form(...),
-    image: Optional[UploadFile] = File(None), # Foto agora é Opcional
-    user_text: Optional[str] = Form(None),    # Texto agora é Opcional
+    image: Optional[UploadFile] = File(None),
+    user_text: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     temp_path = None
     try:
-        # 1. Se houver imagem, guardamos temporariamente para a IA ler
+        # 1. Gestão de Imagem Temporária
         if image:
             temp_path = f"temp_{image.filename}"
             with open(temp_path, "wb") as buffer:
                 shutil.copyfileobj(image.file, buffer)
 
-        # 2. Ir buscar o perfil do utilizador à BD para passar à Letty
-        # (Aqui assumo que tens uma query para pegar nos dados do profile_id)
-        user_profile = db.execute(
-            text("SELECT goal, diet as diet_type, progress_status FROM profile WHERE id = :id"),
+        # 2. Obter Perfil do Utilizador
+        # 2. Obter Perfil Completo
+        user_row = db.execute(
+            text("SELECT * FROM profile WHERE id = :id"), # O '*' puxa TODAS as colunas da tabela
             {"id": profile_id}
         ).fetchone()
 
-        if not user_profile:
-            raise HTTPException(status_code=404, detail="Perfil não encontrado")
+        if not user_row:
+            raise HTTPException(status_code=404, detail="Profile not found")
 
-        # 3. CHAMAR A TUA IA (aquela função que criámos)
+        # 3. Transformar em dicionário automático
+        user_profile = dict(user_row._mapping)
+
+        # 4. Ajuste rápido: A IA quer 'diet_type', mas na BD chama-se 'diet'
+        # Criamos uma cópia do valor com o nome que a IA gosta
+        user_profile["diet_type"] = user_profile["diet"]
+
+        # 5. Agora podes chamar a IA sem medo de KeyErrors
         letty_analysis = letty_nutrition_evaluator(
-            user_profile=dict(user_profile._mapping),
+            user_profile=user_profile,
             image_path=temp_path,
             user_text=user_text
         )
 
-        # 4. Verificar se a IA devolveu erro (ex: não é comida)
+
+        # 3. Análise da IA Letty
+        letty_analysis = letty_nutrition_evaluator(
+            user_profile=user_profile,
+            image_path=temp_path,
+            user_text=user_text
+        )
+
         if "error" in letty_analysis:
-            status = letty_analysis.get("status_code", 400)
-            raise HTTPException(status_code=status, detail=letty_analysis["error"])
+            raise HTTPException(status_code=400, detail=letty_analysis["error"])
 
-        # 5. GUARDAR NA BASE DE DADOS (SQLite)
-        query = text("""
-            INSERT INTO letty_historic (
-                profile_id, meal, protein, fiber, hydration, 
-                saturated_fat, energy, energy_boost, burn_rate_per_hour, mood, tip, focus_time
-            )
-            VALUES (
-                :profile_id, :meal, :protein, :fiber, :hydration, 
-                :saturated_fat, :energy, :energy_boost, :burn_rate_per_hour, :mood, :tip, :focus_time
-            )
-            RETURNING id_letty;
-        """)
-        
-        # Mapear os dados da IA para as colunas da tua tabela
-        db_values = {
-            "profile_id": profile_id,
-            "meal": letty_analysis["meal_name"],
-            "protein": letty_analysis["nutritional_metrics"]["protein_grams"],
-            "fiber": letty_analysis["nutritional_metrics"]["fiber_grams"],
-            "hydration": letty_analysis["nutritional_metrics"]["hydration_ml"],
-            "saturated_fat": letty_analysis["nutritional_metrics"]["saturated_fat_grams"],
-            "energy": letty_analysis["nutritional_metrics"]["energy_kcal"],
-            "energy_boost": letty_analysis["game_logic"]["energy_boost"],
-            "burn_rate_per_hour": letty_analysis["game_logic"]["burn_rate_per_hour"],
-            "mood": letty_analysis["letty_feedback"]["mood"],
-            "tip": letty_analysis["letty_feedback"]["tip"],
-            "focus_time": letty_analysis["game_logic"]["estimated_focus_time_hours"]
-        }
-
-        result = db.execute(query, db_values)
-        id_letty = result.fetchone()[0]
-        db.commit()
-
-        return {"status": "success", "id_letty": id_letty, "analysis": letty_analysis}
-
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # Limpar o ficheiro temporário depois de usar
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
-
-@router.post("", response_model=schemas.LettyHistoricResponse)
-async def create_meal_from_image(
-    profile_id: int = Form(...), # NEW: Mandatory profile_id
-    image: UploadFile = File(...), 
-    meal_name: str = Form("Analyzed Meal"),
-    db: Session = Depends(get_db)
-):
-    try:
-        contents = await image.read()
-        
-        # MOCK VISION LLM RESPONSE mapped to letty_historic:
-        vision_item = {
-            "profile_id": profile_id,
-            "meal": meal_name,
-            "protein": 30.5,
-            "fiber": 8.0,
-            "hydration": 500.0,
-            "saturated_fat": 4.5,
-            "energy": 450,
-            "energy_boost": 25,
-            "burn_rate_per_hour": 60.0,
-            "mood": "Energized",
-            "tip": "Great balance of protein and fiber!",
-            "focus_time": 2.5
-        }
-        
-        query = text("""
-            INSERT INTO letty_historic (
-                profile_id, meal, logged_at, protein, fiber, hydration, 
-                saturated_fat, energy, energy_boost, burn_rate_per_hour, mood, tip, focus_time
-            )
-            VALUES (
-                :profile_id, :meal, CURRENT_TIMESTAMP, :protein, :fiber, :hydration, 
-                :saturated_fat, :energy, :energy_boost, :burn_rate_per_hour, :mood, :tip, :focus_time
-            )
-            RETURNING id_letty;
-        """)
-        
-        result = db.execute(query, vision_item).fetchone()
-        id_letty = result[0]
-        db.commit()
-        
-        return schemas.LettyHistoricResponse(
-            status="success",
-            id_letty=id_letty,
-            metrics=vision_item
+        # 4. Motor de Jogo: Calcular XP e Satiety (O teu motor de scoring)
+        game_results = calculate_nuno_score(
+            metrics=letty_analysis["nutritional_metrics"], 
+            user_goal=user_profile["goal"]
         )
         
+        xp_earned = game_results["xp_earned"]
+
+        # --- LÓGICA DE BATERIA (DRENAGEM E RECARGA) ---
+
+        # 5. Recuperar estado anterior da bateria
+        last_battery = db.execute(
+            text("""
+                SELECT battery_level, burn_rate_per_hour, logged_at 
+                FROM battery 
+                WHERE profile_id = :pid 
+                ORDER BY logged_at DESC LIMIT 1
+            """),
+            {"pid": profile_id}
+        ).fetchone()
+
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        if not last_battery:
+            # Primeiro registo: Começa a 100%
+            new_level = 100
+        else:
+            # Calcular quanto a bateria desceu desde o último log
+            last_time = datetime.strptime(last_battery.logged_at, "%Y-%m-%d %H:%M:%S")
+            diff_hours = (datetime.now() - last_time).total_seconds() / 3600
+            
+            # Drenagem = tempo * taxa de queima anterior
+            drain = diff_hours * last_battery.burn_rate_per_hour
+            
+            # Recarga = boost da nova refeição
+            boost = letty_analysis["game_logic"].get("energy_boost", 0)
+            
+            # Cálculo final com limites [0, 100]
+            current_calc = last_battery.battery_level - drain + boost
+            new_level = min(100, max(0, int(current_calc)))
+
+        # --- PERSISTÊNCIA NA BASE DE DADOS ---
+
+        # 6. Registar no Histórico de Refeições
+        db.execute(
+            text("""
+                INSERT INTO letty_historic (
+                    profile_id, meal, protein, fiber, hydration, 
+                    saturated_fat, energy, energy_boost, mood, tip
+                )
+                VALUES (
+                    :profile_id, :meal, :protein, :fiber, :hydration, 
+                    :saturated_fat, :energy, :energy_boost, :mood, :tip
+                )
+            """),
+            {
+                "profile_id": profile_id,
+                "meal": letty_analysis["meal_name"],
+                "protein": letty_analysis["nutritional_metrics"]["protein_grams"],
+                "fiber": letty_analysis["nutritional_metrics"]["fiber_grams"],
+                "hydration": letty_analysis["nutritional_metrics"]["hydration_ml"],
+                "saturated_fat": letty_analysis["nutritional_metrics"]["saturated_fat_grams"],
+                "energy": letty_analysis["nutritional_metrics"]["energy_kcal"],
+                "energy_boost": letty_analysis["game_logic"]["energy_boost"],
+                "mood": letty_analysis["letty_feedback"]["mood"],
+                "tip": letty_analysis["letty_feedback"]["tip"]
+            }
+        )
+
+        # 7. Criar novo estado de Bateria
+        db.execute(
+            text("""
+                INSERT INTO battery (profile_id, battery_level, focus_time, burn_rate_per_hour, logged_at)
+                VALUES (:pid, :level, :focus, :burn, :now)
+            """),
+            {
+                "pid": profile_id,
+                "level": new_level,
+                "focus": letty_analysis["game_logic"]["estimated_focus_time_hours"],
+                "burn": letty_analysis["game_logic"]["burn_rate_per_hour"],
+                "now": now_str
+            }
+        )
+
+        # 8. Atualizar XP do Perfil
+        db.execute(
+            text("UPDATE profile SET points = points + :xp WHERE id = :id"),
+            {"xp": xp_earned, "id": profile_id}
+        )
+
+        db.commit()
+
+        return {
+            "status": "success",
+            "xp_earned": xp_earned,
+            "new_battery_level": new_level,
+            "meal_name": letty_analysis["meal_name"],
+            "mood": letty_analysis["letty_feedback"]["mood"], 
+            "tip": letty_analysis["letty_feedback"]["tip"],   
+            "feedback": game_results["feedback"]              
+        }
+
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("{profile_id}/recent", response_model=schemas.LettyHistoricListResponse)
+        print(f"ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error processing meal log")
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+@router.get("/{profile_id}/recent")
 def get_recent_meals(profile_id: int, db: Session = Depends(get_db)):
     query = text("""
-        SELECT id_letty, profile_id, meal, logged_at, protein, fiber, hydration, 
-               saturated_fat, energy, energy_boost, burn_rate_per_hour, mood, tip, focus_time
+        SELECT meal, energy, hydration, fiber, saturated_fat, protein
         FROM letty_historic
         WHERE profile_id = :profile_id
         ORDER BY logged_at DESC 
         LIMIT 3
     """)
     results = db.execute(query, {"profile_id": profile_id}).fetchall()
-    return schemas.LettyHistoricListResponse(meals=[dict(row._mapping) for row in results])
+    
+    # Construção manual do dicionário sem usar ._mapping
+    meals = []
+    for row in results:
+        meals.append({
+            "meal": row.meal,
+            "energy": row.energy,
+            "hydration": row.hydration,
+            "fiber": row.fiber,
+            "saturated_fat": row.saturated_fat,
+            "protein": row.protein
+        })
+    
+    return {"meals": meals}
 
-@router.get("/{profile_id}/all", response_model=schemas.LettyHistoricListResponse)
+@router.get("/{profile_id}/all")
 def get_all_meals(profile_id: int, db: Session = Depends(get_db)):
     query = text("""
-        SELECT id_letty, profile_id, meal, logged_at, protein, fiber, hydration, 
-                saturated_fat, energy, energy_boost, burn_rate_per_hour, mood, tip, focus_time
+        SELECT meal, energy, hydration, fiber, saturated_fat, protein
         FROM letty_historic
         WHERE profile_id = :profile_id
         ORDER BY logged_at DESC
     """)
     results = db.execute(query, {"profile_id": profile_id}).fetchall()
-    return schemas.LettyHistoricListResponse(meals=[dict(row._mapping) for row in results])
+    
+    meals = []
+    for row in results:
+        meals.append({
+            "meal": row.meal,
+            "energy": row.energy,
+            "hydration": row.hydration,
+            "fiber": row.fiber,
+            "saturated_fat": row.saturated_fat,
+            "protein": row.protein
+        })
+    
+    return {"meals": meals}
