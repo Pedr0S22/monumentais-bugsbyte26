@@ -1,36 +1,38 @@
-from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from .. import models, schemas
+from sqlalchemy import text
+from pydantic import BaseModel
+from datetime import datetime, timezone
 from ..db import get_db
 
 router = APIRouter(prefix="/api/v1/energy", tags=["energy"])
 
+class EnergyUpdate(BaseModel):
+    energy_level: float
 
-def _hours_since(dt: datetime) -> float:
-    now = datetime.now(timezone.utc)
-    delta = now - dt.replace(tzinfo=timezone.utc)
-    return delta.total_seconds() / 3600
+class EnergyResponse(BaseModel):
+    energy_level: float
+    updated_at: str
 
+@router.patch("")
+def update_energy(payload: EnergyUpdate, db: Session = Depends(get_db)):
+    # Raw SQL to update the single row
+    query = text("""
+        UPDATE energy_state 
+        SET energy_level = :energy, updated_at = CURRENT_TIMESTAMP
+    """)
+    db.execute(query, {"energy": payload.energy_level})
+    db.commit()
+    return {"status": "Energy updated successfully"}
 
-def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
-    return max(low, min(high, value))
-
-
-@router.get("", response_model=schemas.EnergyRead)
+@router.get("", response_model=EnergyResponse)
 def get_energy(db: Session = Depends(get_db)):
-    score = (
-        db.query(models.Score)
-        .join(models.Meal, models.Meal.id == models.Score.meal_id)
-        .order_by(models.Score.computed_at.desc())
-        .first()
-    )
-    if not score:
-        return schemas.EnergyRead(energy_percent=50.0, crash_risk=False, last_meal_at=None)
-
-    last_meal_time = score.computed_at
-    hours = _hours_since(last_meal_time)
-    decay = hours * 3.0
-    energy_percent = _clamp(score.total_score - decay)
-    crash_risk = energy_percent < 40 or score.stability < 40
-    return schemas.EnergyRead(energy_percent=round(energy_percent, 1), crash_risk=crash_risk, last_meal_at=last_meal_time)
+    # Fetching the single row
+    query = text("SELECT energy_level, updated_at FROM energy_state LIMIT 1")
+    result = db.execute(query).fetchone()
+    
+    if result:
+        return EnergyResponse(energy_level=result[0], updated_at=str(result[1]))
+    
+    # Fallback if table is empty
+    return EnergyResponse(energy_level=100.0, updated_at=str(datetime.now(timezone.utc)))

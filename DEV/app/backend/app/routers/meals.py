@@ -1,59 +1,48 @@
-from typing import List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session
-from .. import models, schemas, scoring
+from sqlalchemy import text
 from ..db import get_db
 
 router = APIRouter(prefix="/api/v1/meals", tags=["meals"])
 
-
-def _aggregate_macros(items: List[schemas.MealItemCreate]):
-    carbs = sum(i.carbs for i in items)
-    protein = sum(i.protein for i in items)
-    fiber = sum(i.fiber for i in items)
-    fats = sum(i.fats for i in items)
-    sat_fat = 0.0  # not collected per-item in schema; placeholder
-    gi = 50.0 if not items else sum(i.glycemic_load for i in items) / max(len(items), 1)
-    return carbs, protein, fiber, fats, sat_fat, gi
-
-
-@router.post("", response_model=schemas.MealWithScore)
-def create_meal(payload: schemas.MealCreate, db: Session = Depends(get_db)):
-    meal = models.Meal(user_id=payload.user_id, source=payload.source, note=payload.note)
-    db.add(meal)
-    db.flush()
-
-    for item in payload.items:
-        db.add(models.MealItem(
-            meal_id=meal.id,
-            name=item.name,
-            quantity=item.quantity,
-            unit=item.unit,
-            calories=item.calories,
-            protein=item.protein,
-            carbs=item.carbs,
-            fats=item.fats,
-            fiber=item.fiber,
-            glycemic_load=item.glycemic_load,
-        ))
-
-    carbs, protein, fiber, fats, sat_fat, gi = _aggregate_macros(payload.items)
-    score_components = scoring.compute_score(carbs=carbs, protein=protein, fiber=fiber, fats=fats, sat_fat=sat_fat, gi=gi)
-    score = models.Score(
-        meal_id=meal.id,
-        stability=score_components.stability,
-        satiety=score_components.satiety,
-        balance=score_components.balance,
-        total_score=score_components.total_score,
-    )
-    db.add(score)
+@router.post("")
+async def create_meal_from_image(image: UploadFile = File(...), db: Session = Depends(get_db)):
+    # 1. Read image bytes and pass to your Colleague's Vision LLM
+    contents = await image.read()
+    # vision_metrics = vision_engine.analyze(contents)
+    
+    # Mocking the Vision LLM response:
+    vision_metrics = {
+        "calories": 450.0,
+        "protein": 30.0,
+        "carbs": 40.0,
+        "fats": 15.0,
+        "total_score": 85.0
+    }
+    
+    # 2. Insert into DB using Raw SQL
+    query = text("""
+        INSERT INTO meals (calories, protein, carbs, fats, total_score, logged_at)
+        VALUES (:calories, :protein, :carbs, :fats, :total_score, CURRENT_TIMESTAMP)
+    """)
+    db.execute(query, vision_metrics)
     db.commit()
-    db.refresh(meal)
-    db.refresh(score)
-    return schemas.MealWithScore.from_orm(meal)
+    
+    return {"status": "success", "metrics": vision_metrics}
 
+@router.get("/recent")
+def get_recent_meals(db: Session = Depends(get_db)):
+    # Get last 3 meals
+    query = text("SELECT * FROM meals ORDER BY logged_at DESC LIMIT 3")
+    results = db.execute(query).fetchall()
+    
+    # Convert Raw SQL rows to dictionaries
+    return {"meals": [dict(row._mapping) for row in results]}
 
-@router.get("", response_model=List[schemas.MealWithScore])
-def list_meals(limit: int = 20, db: Session = Depends(get_db)):
-    meals = db.query(models.Meal).order_by(models.Meal.logged_at.desc()).limit(limit).all()
-    return meals
+@router.get("/all")
+def get_all_meals(db: Session = Depends(get_db)):
+    # Get all meals
+    query = text("SELECT * FROM meals ORDER BY logged_at DESC")
+    results = db.execute(query).fetchall()
+    
+    return {"meals": [dict(row._mapping) for row in results]}
