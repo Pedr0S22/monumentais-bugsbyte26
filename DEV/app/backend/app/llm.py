@@ -1,15 +1,115 @@
-from .config import get_settings
+import base64
+import json
+import re
+import os
+from huggingface_hub import InferenceClient
 
-SYSTEM_PROMPT = (
-    "You are Letty, a friendly lettuce mascot."
-    " Be concise, encouraging, and avoid medical diagnoses or prescriptive treatment."
-    " Suggest balanced meals (protein + fiber + healthy fats) and hydration."
-    " Remind users to consult professionals for medical concerns."
+# Configuration
+load_dotenv()
+HF_TOKEN = os.getenv("token")  # Ensure this is set in your environment variables
+client = InferenceClient(
+    model="Qwen/Qwen2.5-VL-7B-Instruct",
+    token=HF_TOKEN
 )
 
 
-def generate_reply(message: str) -> str:
-    # Placeholder for a local LLM adapter (e.g., Ollama/HF). In production, call the model here.
-    settings = get_settings()
-    _ = settings.llm_model  # reserved for future adapter use
-    return f"Letty here! I got your message: '{message}'. Try adding protein and fiber to keep energy steady."
+def letty_nutrition_evaluator(image_path, user_profile):
+    """
+    Evaluates meals to provide game-engine values: Energy Boost and Burn Rate.
+    """
+    try:
+        with open(image_path, "rb") as f:
+            base64_image = base64.b64encode(f.read()).decode("utf-8")
+    except FileNotFoundError:
+        return {"error": "Image file not found."}
+
+    image_url = f"data:image/jpeg;base64,{base64_image}"
+
+    # Optimized Prompt for Game Mechanics
+    prompt = f"""
+    Act as Letty, a witty and supportive nutrition coach. If the user eats well, be their biggest cheerleader. If they eat junk, be playfully sarcastic but helpful.
+    Analyze the food image considering the user's specific context.
+
+    USER PROFILE:
+    - Goal: {user_profile['goal']}
+    - Diet Type: {user_profile['diet_type']}
+    - Current Progress: {user_profile['progress_status']}
+
+    MOTIVATION STRATEGY:
+    - Use the user's 'progress_status' to adapt your empathy level. 
+    - Prioritize positive reinforcement to build momentum, especially if the user is struggling.
+    - Avoid shaming; focus on small improvements and keeping the streak alive.
+
+    LETTY'S MOOD CRITERIA:
+    - 'Happy': Encouraging choice that aligns with the goal or helps stabilize their current progress.
+    - 'Meh': A neutral step that could be optimized with a friendly nudge.
+    - 'Sad': Only for significant setbacks where a firm but caring wake-up call is necessary.
+
+    TASK:
+    1. Identify dish/ingredients.
+    2. Estimate: Protein (g), Fiber (g), Hydration (ml), Saturated Fat (g), and Energy (kcal).
+    3. Calculate 'Energy Boost': How many points (0-50) this meal adds to a 100-point bar.
+    4. Calculate 'Burn Rate': How many points are lost per hour after eating this.
+       - Low Burn Rate (2-5 pts/h): Complex carbs, fiber, protein (Sustained energy).
+       - High Burn Rate (15-20 pts/h): High sugar, processed food (Fast depletion).
+    5. Provide a 'Letty Tip': A VERY SHORT (max 15 words) motivational tip in English.
+
+    RETURN ONLY JSON:
+    {{
+      "meal_name": "string",
+      "nutritional_metrics": {{
+        "protein_grams": int,
+        "fiber_grams": int,
+        "hydration_ml": int,
+        "saturated_fat_grams": int,
+        "energy_kcal": int
+      }},
+      "game_logic": {{
+        "energy_boost": int,
+        "burn_rate_per_hour": int,
+        "estimated_focus_time_hours": float
+      }},
+      "letty_feedback": {{
+        "mood": "Happy | Meh | Sad",
+        "tip": "string"
+      }}
+    }}
+    """
+
+    try:
+        response = client.chat_completion(
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": image_url}}
+                    ]
+                }
+            ],
+            max_tokens=900
+        )
+
+        content = response.choices[0].message.content
+        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+        return json.loads(json_match.group()) if json_match else {"error": "Invalid output"}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# --- HACKATHON DEMO ---
+if __name__ == "__main__":
+    test_user = {
+        "name": "Francisca",
+        "goal": "Weight loss and sustainable calorie deficit",
+        "diet_type": "Omnivore / Balanced",
+        "progress_status": "Emotional rollercoaster (inconsistent tracking this week)"
+    }
+
+    img_path = "/Users/francisca_mateus/Downloads/close-view-sunday-roast-roasted-600nw-2714237419.webp"
+
+    print("🥬 Letty is calculating your energy boost and burn rate...")
+    result = letty_nutrition_evaluator(img_path, test_user)
+
+    print(json.dumps(result, indent=4))
