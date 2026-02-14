@@ -1,15 +1,25 @@
 import json
 import os
+from datetime import datetime
 
-# CONFIGURATION
-INPUT_FILE = "temp_llm_output.json"
-HISTORY_FILE = "user_game_history.json"
+# --- CONFIGURATION (PASTE YOUR PATH HERE) ---
+# This must match the directory you used in llm.py
+TARGET_DIRECTORY = r"DEV\app\backend\app\routers\llm_output"
+
+INPUT_FILENAME = "temp_llm_output.json"
+OUTPUT_HISTORY_FILE = "user_game_history.json"
 
 def load_llm_data():
-    """Reads the raw data from the LLM."""
-    if not os.path.exists(INPUT_FILE):
+    """Reads the raw data from the specific directory."""
+    file_path = os.path.join(TARGET_DIRECTORY, INPUT_FILENAME)
+    
+    if not os.path.exists(file_path):
+        print(f"❌ Error: Could not find file at {file_path}")
+        print("   -> Did you run the LLM script first?")
         return None
-    with open(INPUT_FILE, "r") as f:
+        
+    with open(file_path, "r") as f:
+        print(f"📂 Loading data from: {file_path}")
         return json.load(f)
 
 def calculate_nuno_score(metrics, user_goal):
@@ -58,8 +68,6 @@ def calculate_nuno_score(metrics, user_goal):
         # Ideal: High Calories (>500), High Protein (>25g)
         # Nuno's Logic: "Little volume, lots of energy"
         
-        density_score = kcal / (p + f + w + 1) # Simplified Density metric
-        
         if kcal > 500 and p > 25:
             xp = 100
             feedback = "🦍 BEAST MODE! High energy & protein."
@@ -69,7 +77,7 @@ def calculate_nuno_score(metrics, user_goal):
             feedback = "❌ Too light! You need more fuel to grow."
         else:
             xp = 70
-            feedback = "Good protein, but try to eat more carbs."
+            feedback = "Good protein, but try to increase calorie density."
 
     # --- RULE SET 3: MAINTENANCE ("The Balance Game") ---
     else:
@@ -82,18 +90,23 @@ def calculate_nuno_score(metrics, user_goal):
             feedback = "A bit unbalanced. Missing protein or fiber."
 
     return {
-        "xp": int(xp),
-        "level_progress": int(xp) / 1000, # Example: 1000 XP to level up
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "xp_earned": int(xp),
         "satiety_index": round(satiety_index, 2),
         "feedback": feedback,
-        "bonus": bonus_tag
+        "bonus_tag": bonus_tag
     }
 
-def update_history(score_data):
-    """Saves the final score to the user's permanent history."""
+def update_history(score_data, meal_name):
+    """Saves the final score to the user's history file in the directory."""
+    history_path = os.path.join(TARGET_DIRECTORY, OUTPUT_HISTORY_FILE)
+    
+    # Add meal name to the record
+    score_data["meal_name"] = meal_name
+    
     history = []
-    if os.path.exists(HISTORY_FILE):
-        with open(HISTORY_FILE, "r") as f:
+    if os.path.exists(history_path):
+        with open(history_path, "r") as f:
             try:
                 history = json.load(f)
             except:
@@ -101,28 +114,32 @@ def update_history(score_data):
     
     history.append(score_data)
     
-    with open(HISTORY_FILE, "w") as f:
+    with open(history_path, "w") as f:
         json.dump(history, f, indent=4)
-    print("✅ Score saved to History!")
+    print(f"✅ Score saved to History: {history_path}")
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
+    print("🎮 Starting Game Engine...")
+    
     # 1. Load Raw Data
     raw_data = load_llm_data()
     
     if raw_data:
         # In a real app, you get this from the user's login session
-        current_user_goal = "Weight loss"
+        # You can change this manually to test logic: "Weight gain", "Maintenance"
+        current_user_goal = "Weight loss" 
         
-        print(f"📊 Analyzing for Goal: {current_user_goal}...")
+        print(f"📊 Analyzing '{raw_data['meal_name']}' for Goal: {current_user_goal}...")
         
         # 2. Calculate Score
         score = calculate_nuno_score(raw_data["nutritional_metrics"], current_user_goal)
         
         # 3. Show Result
-        print(json.dumps(score, indent=4))
+        print("\n" + "="*30)
+        print(f"  XP EARNED: {score['xp_earned']}")
+        print(f"  FEEDBACK:  {score['feedback']}")
+        print("="*30 + "\n")
         
         # 4. Save
-        update_history(score)
-    else:
-        print("❌ No new meal data found. Run llm_analyzer.py first!")
+        update_history(score, raw_data["meal_name"])

@@ -127,10 +127,9 @@ if __name__ == "__main__":
         "progress_status": "Emotional rollercoaster (inconsistent tracking this week)"
     }
 
-    img_path = "/Users/francisca_mateus/Downloads/close-view-sunday-roast-roasted-600nw-2714237419.webp"
+    img_path = r"C:\Users\ramya\Desktop\food picture.webp"
     output_dir = "DEV/app/backend/app/routers/llm_output"
     print("🥬 Letty is calculating your energy boost and burn rate...")
     result = letty_nutrition_evaluator(img_path, test_user)
     save_llm_output(result, output_dir)
-
     print(json.dumps(result, indent=4))
