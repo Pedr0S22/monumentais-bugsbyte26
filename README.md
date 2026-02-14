@@ -48,6 +48,9 @@ Steps
    - Frontend: http://localhost:4173
 3) Stop: `docker compose down`
 4) Clear volumes (remove SQLite DB): `docker compose down -v`
+5) Reset the SQLite data file (after stopping the services):
+   - macOS/Linux: `rm DEV/app/backend/data/app.db`
+   - Windows PowerShell: `Remove-Item DEV\app\backend\data\app.db`
 
 Useful commands
 - API logs: `docker compose logs -f api`

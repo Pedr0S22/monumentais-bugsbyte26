@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     database_url: str = Field("sqlite:///./data/app.db", env="DATABASE_URL")
     environment: str = Field("local", env="APP_ENV")
     llm_model: str = Field("llama3", env="LLM_MODEL")
+    # Weights that determine how much each component contributes to the final energy score.
+    stability_weight: float = Field(0.6, env="STABILITY_WEIGHT")
+    satiety_weight: float = Field(0.3, env="SATIETY_WEIGHT")
+    balance_weight: float = Field(0.1, env="BALANCE_WEIGHT")
 
     class Config:
         env_file = os.path.join(os.path.dirname(__file__), "..", ".env")
