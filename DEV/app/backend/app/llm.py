@@ -12,7 +12,25 @@ client = InferenceClient(
     model="Qwen/Qwen2.5-VL-7B-Instruct",
     token=HF_TOKEN
 )
+def letty_nutrition_evaluator(user_profile, image_path=None, user_text=None):
+    """
+    Evaluates meals via image, text, or both.
+    Returns error 400 if the input is not a meal.
+    """
+    if not image_path and not user_text:
+        return {"error": "No input provided.", "status_code": 400}
 
+    content_list = []
+    
+    # 1. Preparar a Imagem (se existir)
+    if image_path:
+        try:
+            with open(image_path, "rb") as f:
+                base64_image = base64.b64encode(f.read()).decode("utf-8")
+            image_url = f"data:image/jpeg;base64,{base64_image}"
+            content_list.append({"type": "image_url", "image_url": {"url": image_url}})
+        except FileNotFoundError:
+            return {"error": "Image file not found.", "status_code": 400}
 
 def letty_nutrition_evaluator(image_path, user_profile):
     """

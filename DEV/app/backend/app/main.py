@@ -2,10 +2,8 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .db import engine, Base
-from .routers import meals, scores, energy, chat, health, photo_analysis
-
-Base.metadata.create_all(bind=engine)
+from .db import engine
+from .routers import meals, energy, chat, health
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name)
@@ -25,11 +23,8 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(meals.router)
-app.include_router(scores.router)
 app.include_router(energy.router)
 app.include_router(chat.router)
-app.include_router(photo_analysis.router)
-
 
 @app.get("/")
 def root():

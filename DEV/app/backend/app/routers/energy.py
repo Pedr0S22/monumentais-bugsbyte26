@@ -1,36 +1,82 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from .. import models, schemas
+from sqlalchemy import text
+from .. import schemas
 from ..db import get_db
 
 router = APIRouter(prefix="/api/v1/energy", tags=["energy"])
 
+@router.patch("")
+def update_energy(payload: schemas.BatteryUpdate, db: Session = Depends(get_db)):
+    try:
+        query = text("""
+            INSERT INTO battery (profile_id, battery_level, logged_at) 
+            VALUES (:profile_id, :battery_level, CURRENT_TIMESTAMP)
+        """)
+        db.execute(query, {"profile_id": payload.profile_id, "battery_level": payload.battery_level})
+        db.commit()
+        return {"status": "success", "message": "Battery logged successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
-def _hours_since(dt: datetime) -> float:
-    now = datetime.now(timezone.utc)
-    delta = now - dt.replace(tzinfo=timezone.utc)
-    return delta.total_seconds() / 3600
 
+@router.get("/{profile_id}", response_model=schemas.BatteryRead)
+def get_energy(profile_id: int, db: Session = Depends(get_db)):
+    query = text("""
+        SELECT battery_level, logged_at 
+        FROM battery 
+        WHERE profile_id = :profile_id
+        ORDER BY logged_at DESC 
+        LIMIT 1
+    """)
+    result = db.execute(query, {"profile_id": profile_id}).fetchone()
+    
+    if result:
+        battery = result[0]
+        logged_at = result[1] 
+        if isinstance(logged_at, str):
+            try:
+                logged_at = datetime.fromisoformat(logged_at.replace(" ", "T"))
+            except ValueError:
+                logged_at = None
 
-def _clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
-    return max(low, min(high, value))
-
-
-@router.get("", response_model=schemas.EnergyRead)
-def get_energy(db: Session = Depends(get_db)):
-    score = (
-        db.query(models.Score)
-        .join(models.Meal, models.Meal.id == models.Score.meal_id)
-        .order_by(models.Score.computed_at.desc())
-        .first()
+        crash_risk = battery < 40
+        return schemas.BatteryRead(
+            battery_level=battery,
+            crash_risk=crash_risk,
+            logged_at=logged_at
+        )
+    
+    return schemas.BatteryRead(
+        battery_level=100, 
+        crash_risk=False, 
+        logged_at=datetime.now(timezone.utc)
     )
-    if not score:
-        return schemas.EnergyRead(energy_percent=50.0, crash_risk=False, last_meal_at=None)
 
-    last_meal_time = score.computed_at
-    hours = _hours_since(last_meal_time)
-    decay = hours * 3.0
-    energy_percent = _clamp(score.total_score - decay)
-    crash_risk = energy_percent < 40 or score.stability < 40
-    return schemas.EnergyRead(energy_percent=round(energy_percent, 1), crash_risk=crash_risk, last_meal_at=last_meal_time)
+@router.get("/{profile_id}/history", response_model=schemas.BatteryHistoryResponse)
+def get_energy_history(profile_id: int, db: Session = Depends(get_db)):
+    query = text("""
+        SELECT battery_level, logged_at 
+        FROM battery 
+        WHERE profile_id = :profile_id AND logged_at >= datetime('now', '-24 hours')
+        ORDER BY logged_at ASC
+    """)
+    results = db.execute(query, {"profile_id": profile_id}).fetchall()
+    
+    history_list = []
+    for row in results:
+        logged_at = row[1]
+        if isinstance(logged_at, str):
+            try:
+                logged_at = datetime.fromisoformat(logged_at.replace(" ", "T"))
+            except ValueError:
+                logged_at = None
+                
+        history_list.append({
+            "battery_level": row[0],
+            "logged_at": logged_at
+        })
+        
+    return schemas.BatteryHistoryResponse(history=history_list)

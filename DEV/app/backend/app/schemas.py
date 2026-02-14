@@ -1,98 +1,59 @@
 from datetime import datetime
-from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
 
+# --- Health ---
+class HealthRead(BaseModel):
+    status: str = "ok"
+    timestamp: datetime
 
-class MealItemBase(BaseModel):
-    name: str
-    quantity: float = 0.0
-    unit: str = "g"
-    calories: float = 0.0
-    protein: float = 0.0
-    carbs: float = 0.0
-    fats: float = 0.0
-    fiber: float = 0.0
-    glycemic_load: float = 0.0
-
-
-class MealItemCreate(MealItemBase):
-    pass
-
-
-class MealItemRead(MealItemBase):
-    id: int
-
-    class Config:
-        orm_mode = True
-
-
-class MealCreate(BaseModel):
-    user_id: Optional[str] = None
-    source: str = Field("text", description="text or photo")
-    note: Optional[str] = None
-    items: List[MealItemCreate] = []
-
-
-class MealRead(BaseModel):
-    id: int
-    user_id: Optional[str]
-    source: str
-    note: Optional[str]
-    logged_at: datetime
-    items: List[MealItemRead]
-
-    class Config:
-        orm_mode = True
-
-
-class ScoreRequest(BaseModel):
-    carbs: float
-    protein: float
-    fiber: float
-    fats: float
-    sat_fat: float = 0.0
-    gi: float = Field(50, description="Average glycemic index (0-100)")
-    hydration: float = Field(0.0, description="Hydration percentage contribution")
-
-
-class ScoreRead(BaseModel):
-    stability: float
-    satiety: float
-    balance: float
-    total_score: float
-    computed_at: datetime
-
-    class Config:
-        orm_mode = True
-
-
-class MealWithScore(MealRead):
-    score: Optional[ScoreRead] = None
-
-
-class EnergyRead(BaseModel):
-    energy_percent: float
-    crash_risk: bool
-    last_meal_at: Optional[datetime] = None
-
-
-class MealPhotoAnalysis(BaseModel):
-    score: float
-    meal_quality: str
-    message: str
-    macros: Optional[Dict[str, float]] = None
-
-
+# --- Chat (RAG) ---
 class ChatRequest(BaseModel):
     message: str
-    user_id: Optional[str] = None
-
+    profile_id: Optional[int] = None # Match your new DB logic
 
 class ChatResponse(BaseModel):
     reply: str
     source: str = "stub"
 
+# --- Battery (formerly Energy) ---
+class BatteryUpdate(BaseModel):
+    profile_id: int
+    battery_level: int
 
-class HealthRead(BaseModel):
-    status: str = "ok"
-    timestamp: datetime
+class BatteryRead(BaseModel):
+    battery_level: int
+    crash_risk: bool
+    logged_at: Optional[datetime] = None
+
+class BatteryHistoryItem(BaseModel):
+    battery_level: int
+    logged_at: datetime
+
+class BatteryHistoryResponse(BaseModel):
+    history: List[BatteryHistoryItem]
+
+# --- Letty Historic (formerly Meals) ---
+class LettyHistoricResponse(BaseModel):
+    status: str
+    id_letty: int
+    metrics: Dict[str, Any]
+
+class LettyHistoricSummary(BaseModel):
+    id_letty: int
+    profile_id: int
+    meal: str
+    logged_at: datetime
+    protein: float
+    fiber: float
+    hydration: float
+    saturated_fat: float
+    energy: int
+    energy_boost: int
+    burn_rate_per_hour: float
+    mood: str
+    tip: str
+    focus_time: float
+
+class LettyHistoricListResponse(BaseModel):
+    meals: List[LettyHistoricSummary]
