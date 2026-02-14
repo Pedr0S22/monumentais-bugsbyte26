@@ -7,7 +7,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def seed_sqlite_with_advices():
 
-    db_path = os.path.join(BASE_DIR, "..", "data", "app.db")
+    db_path = os.path.join(BASE_DIR, "..", "data", "app.sqlite3")
 
     csv_path = os.path.join(BASE_DIR, "..", "data", "generated_advices.csv")
     
@@ -87,7 +87,7 @@ def fetch_dataset_GA(cursor, csv_path):
         print(f"Failed to load CSV: {e}")
 
 def clear_letty_advices_table():
-    db_path = os.path.join(BASE_DIR, "..", "data", "app.db")
+    db_path = os.path.join(BASE_DIR, "..", "data", "app.sqlite3")
     print(db_path)
     
     # Check if the database actually exists first

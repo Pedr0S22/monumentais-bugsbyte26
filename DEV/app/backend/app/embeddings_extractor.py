@@ -33,7 +33,7 @@ def get_vector_store():
 if __name__ == "__main__":
 
     # Process and Load
-    db_path = os.path.join(BASE_DIR, "..", "data", "app.db")
+    db_path = os.path.join(BASE_DIR, "..", "data", "app.sqlite3")
     df = fetch_from_sql(db_path)
     collection = get_vector_store()
 
