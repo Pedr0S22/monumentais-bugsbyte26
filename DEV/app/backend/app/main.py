@@ -18,14 +18,14 @@ async def lifespan(app: FastAPI):
         collection = get_vector_store()
         # Send a dummy query to force the embedding model to load into RAM now!
         collection.query(query_texts=["wake up"], n_results=1)
-        print("Letty is fully awake and ready to chat instantly!")
+        print("INFO: Letty is fully awake and ready to chat instantly!")
     except Exception as e:
-        print(f"⚠️ Could not warm up ChromaDB: {e}")
+        print(f"WARNING: Could not warm up ChromaDB: {e}")
         
     yield # The app runs here
     
     # --- SHUTDOWN LOGIC (Optional) ---
-    print("Shutting down Letty...")
+    print("INFO: Shutting down Letty...")
 
 # Attach the lifespan to your FastAPI app
 settings = get_settings()

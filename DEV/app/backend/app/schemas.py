@@ -20,15 +20,21 @@ class ChatResponse(BaseModel):
 class BatteryUpdate(BaseModel):
     profile_id: int
     battery_level: int
+    focus_time: float
+    burn_rate_per_hour: float
 
 class BatteryRead(BaseModel):
     battery_level: int
     crash_risk: bool
     logged_at: Optional[datetime] = None
+    focus_time: float
+    burn_rate_per_hour: float
 
 class BatteryHistoryItem(BaseModel):
     battery_level: int
     logged_at: datetime
+    focus_time: float
+    burn_rate_per_hour: float
 
 class BatteryHistoryResponse(BaseModel):
     history: List[BatteryHistoryItem]
