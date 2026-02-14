@@ -1,4 +1,4 @@
-import { Meal, MealItem, Score, Energy, ChatResponse } from "./types";
+import { Meal, MealItem, Score, Energy, ChatResponse, MealPhotoAnalysis } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
@@ -53,4 +53,14 @@ export async function chat(message: string): Promise<ChatResponse> {
     body: JSON.stringify({ message }),
   });
   return handle<ChatResponse>(res);
+}
+
+export async function uploadMealPhoto(image: File): Promise<MealPhotoAnalysis> {
+  const formData = new FormData();
+  formData.append("image", image);
+  const res = await fetch(`${API_BASE}/analyze-meal`, {
+    method: "POST",
+    body: formData,
+  });
+  return handle<MealPhotoAnalysis>(res);
 }

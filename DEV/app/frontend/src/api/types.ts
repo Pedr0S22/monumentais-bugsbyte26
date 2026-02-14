@@ -11,6 +11,13 @@ export type MealItem = {
   glycemic_load: number;
 };
 
+export type MealPhotoAnalysis = {
+  score: number;
+  meal_quality: string;
+  message: string;
+  macros?: Record<string, number>;
+};
+
 export type Score = {
   stability: number;
   satiety: number;

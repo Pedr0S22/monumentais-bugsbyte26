@@ -3,6 +3,7 @@ import { Layout } from "./components/Layout";
 import { EnergyBar } from "./components/EnergyBar";
 import { MealForm } from "./components/MealForm";
 import { MealList } from "./components/MealList";
+import { MealUpload } from "./components/MealUpload";
 import { ChatPanel } from "./components/ChatPanel";
 import { fetchEnergy } from "./api/client";
 import "./index.css";
@@ -23,6 +24,9 @@ export function App() {
           <section className="bg-white/5 border border-white/10 rounded-lg p-4">
             <h2 className="text-lg font-semibold mb-3">Energy</h2>
             <EnergySection />
+          </section>
+          <section className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <MealUpload />
           </section>
           <section>
             <MealForm />

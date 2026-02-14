@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from .config import get_settings
+
 
 @dataclass
 class ScoreComponents:
@@ -12,6 +14,11 @@ class ScoreComponents:
 
 def clamp(value: float, low: float = 0.0, high: float = 100.0) -> float:
     return max(low, min(high, value))
+
+
+def _get_score_weights():
+    settings = get_settings()
+    return settings.stability_weight, settings.satiety_weight, settings.balance_weight
 
 
 def compute_score(*, carbs: float, protein: float, fiber: float, fats: float, sat_fat: float = 0.0, gi: float = 50.0, hydration: float = 0.0) -> ScoreComponents:
@@ -26,7 +33,8 @@ def compute_score(*, carbs: float, protein: float, fiber: float, fats: float, sa
     # Balance heurística
     balance = 100 if (15 <= protein <= 30 and fiber > 5 and 10 <= fats <= 25) else 60
 
-    total = (stability * 0.6) + (satiety * 0.3) + (balance * 0.1)
+    stability_weight, satiety_weight, balance_weight = _get_score_weights()
+    total = (stability * stability_weight) + (satiety * satiety_weight) + (balance * balance_weight)
     return ScoreComponents(
         stability=round(stability, 1),
         satiety=round(satiety, 1),

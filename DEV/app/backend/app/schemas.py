@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -74,6 +74,13 @@ class EnergyRead(BaseModel):
     energy_percent: float
     crash_risk: bool
     last_meal_at: Optional[datetime] = None
+
+
+class MealPhotoAnalysis(BaseModel):
+    score: float
+    meal_quality: str
+    message: str
+    macros: Optional[Dict[str, float]] = None
 
 
 class ChatRequest(BaseModel):
