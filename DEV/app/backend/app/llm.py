@@ -3,6 +3,7 @@ import json
 import re
 import os
 from huggingface_hub import InferenceClient
+from .config import get_settings
 from dotenv import load_dotenv
 
 # Configuration
@@ -88,6 +89,45 @@ def save_llm_output(data, output_dir, filename="temp_llm_output.json"):
     with open(full_path, "w") as f:
         json.dump(data, f, indent=4)
     print(f"✅ Data passed to Game Engine: {full_path}")
+
+# ChatBot queries
+
+def build_nutritionist_prompt(profile_id: int, user_question: str, rag_advice: str = "") -> str:
+    """
+    Constructs the prompt adhering to the new professional nutritionist persona and rules.
+    """
+    return f"""You are a professional nutritionist with general knowledge of every aspect of nutrition, dietetics, and wellness.
+
+Consider the profile of the client (Profile ID: {profile_id}).
+
+Consider the following retrieved RAG advice. If it is valid and relevant to the user's question, use it to inform your answer. If it is not relevant or does not exist, ignore it:
+[RAG Advice Start]
+{rag_advice if rag_advice else "No specific RAG advice retrieved."}
+[RAG Advice End]
+
+User Question: 
+"{user_question}"
+
+Instructions:
+Give a personalized answer based on the user's question and profile. Do not give a big or overly lengthy answer; provide exactly and strictly just what needs to be answered.
+"""
+
+def generate_reply(profile_id: int, message: str, rag_advice: str = "") -> str:
+    settings = get_settings()
+    _ = settings.llm_model  # reserved for future actual LLM model loading
+    
+    # 1. Generate the exact prompt
+    prompt = build_nutritionist_prompt(profile_id, message, rag_advice)
+    
+    # 2. [FUTURE] Call your actual LLM here (e.g., passing 'prompt' to an Ollama or OpenAI client)
+    # For now, we mock the execution:
+    
+    mock_llm_execution = (
+        f"As a professional nutritionist, looking at Profile ID {profile_id} "
+        f"and the question '{message}', here is your concise advice."
+    )
+    
+    return mock_llm_execution
 
 # --- HACKATHON DEMO ---
 if __name__ == "__main__":
