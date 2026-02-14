@@ -98,11 +98,25 @@ def letty_nutrition_evaluator(image_path, user_profile):
     except Exception as e:
         return {"error": str(e)}
 
-def save_llm_output(data, filename="temp_llm_output.json"):
-    """Saves the raw LLM analysis to a file for the scoring engine to read."""
-    with open(filename, "w") as f:
+def save_llm_output(data, output_dir, filename="temp_llm_output.json"):
+    """
+    Saves the raw LLM analysis to a SPECIFIC directory.
+    Automatically creates the folder if it doesn't exist.
+    """
+    
+    if not os.path.exists(output_dir):
+        try:
+            os.makedirs(output_dir)
+            print(f"📁 Created new directory: {output_dir}")
+        except OSError as e:
+            print(f"❌ Error creating directory: {e}")
+            return
+    
+    full_path = os.path.join(output_dir, filename)
+    
+    with open(full_path, "w") as f:
         json.dump(data, f, indent=4)
-    print(f"✅ Data passed to Game Engine: {filename}")
+    print(f"✅ Data passed to Game Engine: {full_path}")
 
 # --- HACKATHON DEMO ---
 if __name__ == "__main__":
@@ -113,10 +127,9 @@ if __name__ == "__main__":
         "progress_status": "Emotional rollercoaster (inconsistent tracking this week)"
     }
 
-    img_path = "/Users/francisca_mateus/Downloads/close-view-sunday-roast-roasted-600nw-2714237419.webp"
-
+    img_path = r"C:\Users\ramya\Desktop\food picture.webp"
+    output_dir = "DEV/app/backend/app/routers/llm_output"
     print("🥬 Letty is calculating your energy boost and burn rate...")
     result = letty_nutrition_evaluator(img_path, test_user)
-    save_llm_output(result)
-
+    save_llm_output(result, output_dir)
     print(json.dumps(result, indent=4))
