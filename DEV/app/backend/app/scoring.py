@@ -2,17 +2,14 @@ import json
 import os
 from datetime import datetime
 
-# --- CONFIGURATION (PASTE YOUR PATH HERE) ---
-# This must match the directory you used in llm.py
-TARGET_DIRECTORY = r"DEV\app\backend\app\routers\llm_output"
-
+# --- CONFIGURATION---
+TARGET_DIRECTORY = r"DEV\app\backend\app\llm_output"
 INPUT_FILENAME = "temp_llm_output.json"
 OUTPUT_HISTORY_FILE = "user_game_history.json"
 
 def load_llm_data():
     """Reads the raw data from the specific directory."""
     file_path = os.path.join(TARGET_DIRECTORY, INPUT_FILENAME)
-    
     if not os.path.exists(file_path):
         print(f"❌ Error: Could not find file at {file_path}")
         print("   -> Did you run the LLM script first?")
@@ -38,7 +35,6 @@ def calculate_nuno_score(metrics, user_goal):
     # 2. Calculate Satiety Index (SI)
     # This formula rewards Volume (Fiber/Water/Protein) relative to Calories
     satiety_index = ((p * 2.0) + (f * 3.0) + (w * 0.2)) / kcal * 100
-    
     xp = 0
     feedback = ""
     bonus_tag = ""
@@ -65,7 +61,7 @@ def calculate_nuno_score(metrics, user_goal):
     # --- RULE SET 2: WEIGHT GAIN ("The Density Game") ---
     elif "gain" in user_goal.lower() or "muscle" in user_goal.lower():
         # Ideal: High Calories (>500), High Protein (>25g)
-        # Nuno's Logic: "Little volume, lots of energy"
+        # Logic: "Little volume, lots of energy"
         
         if kcal > 500 and p > 25:
             xp = 100
@@ -87,7 +83,6 @@ def calculate_nuno_score(metrics, user_goal):
         else:
             xp = 50
             feedback = "A bit unbalanced. Missing protein or fiber."
-
     return {
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "xp_earned": int(xp),
@@ -99,10 +94,8 @@ def calculate_nuno_score(metrics, user_goal):
 def update_history(score_data, meal_name):
     """Saves the final score to the user's history file in the directory."""
     history_path = os.path.join(TARGET_DIRECTORY, OUTPUT_HISTORY_FILE)
-    
     # Add meal name to the record
     score_data["meal_name"] = meal_name
-    
     history = []
     if os.path.exists(history_path):
         with open(history_path, "r") as f:
@@ -112,7 +105,6 @@ def update_history(score_data, meal_name):
                 history = []
     
     history.append(score_data)
-    
     with open(history_path, "w") as f:
         json.dump(history, f, indent=4)
     print(f"✅ Score saved to History: {history_path}")
@@ -124,8 +116,7 @@ if __name__ == "__main__":
     # 1. Load Raw Data
     raw_data = load_llm_data()
     if raw_data:
-        # In a real app, you get this from the user's login session
-        # You can change this manually to test logic: "Weight gain", "Maintenance"
+        # Change this manually to test logic: "Weight gain", "Maintenance"
         current_user_goal = "Weight loss"
         print(f"📊 Analyzing '{raw_data['meal_name']}' for Goal: {current_user_goal}...")
         # 2. Calculate Score

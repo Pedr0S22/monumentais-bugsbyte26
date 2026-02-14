@@ -1,19 +1,19 @@
 {
-    "meal_name": "Beef Roast with Yorkshire Pudding, Roasted Potatoes, Carrots, and Peas",
+    "meal_name": "McChicken Meal",
     "nutritional_metrics": {
-        "protein_grams": 45,
-        "fiber_grams": 10,
-        "hydration_ml": 200,
-        "saturated_fat_grams": 15,
-        "energy_kcal": 600
+        "protein_grams": 15,
+        "fiber_grams": 3,
+        "hydration_ml": 250,
+        "saturated_fat_grams": 8,
+        "energy_kcal": 800
     },
     "game_logic": {
-        "energy_boost": 15,
+        "energy_boost": 20,
         "burn_rate_per_hour": 5,
-        "estimated_focus_time_hours": 12
+        "estimated_focus_time_hours": 4
     },
     "letty_feedback": {
-        "mood": "Happy",
-        "tip": "Keep it up! This meal fuels your day with protein and fiber."
+        "mood": "Sad",
+        "tip": "Balance your diet with healthier options for lasting energy."
     }
 }
