@@ -5,8 +5,31 @@ from .config import get_settings
 from .db import engine
 from .routers import meals, energy, chat, health
 
+from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from .embeddings_extractor import get_vector_store
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- STARTUP LOGIC ---
+    print("Warming up Letty's brain (Loading ChromaDB & Embeddings)...")
+    try:
+        collection = get_vector_store()
+        # Send a dummy query to force the embedding model to load into RAM now!
+        collection.query(query_texts=["wake up"], n_results=1)
+        print("Letty is fully awake and ready to chat instantly!")
+    except Exception as e:
+        print(f"⚠️ Could not warm up ChromaDB: {e}")
+        
+    yield # The app runs here
+    
+    # --- SHUTDOWN LOGIC (Optional) ---
+    print("Shutting down Letty...")
+
+# Attach the lifespan to your FastAPI app
 settings = get_settings()
-app = FastAPI(title=settings.app_name)
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
