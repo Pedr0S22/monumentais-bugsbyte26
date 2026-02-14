@@ -93,7 +93,7 @@ def scan_meal():
         history = []
         if os.path.exists(HISTORY_FILE):
             with open(HISTORY_FILE, "r") as f:
-                try: 
+                try:
                     history = json.load(f)
                 except: 
                     pass

@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 
-# We will handle file saving in the main app.py, 
+# We will handle file saving in the main app.py,
 # but we keep the logic here pure.
 
 def calculate_nuno_score(metrics, user_goal):
