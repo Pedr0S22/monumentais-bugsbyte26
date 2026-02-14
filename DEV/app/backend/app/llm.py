@@ -97,6 +97,11 @@ def letty_nutrition_evaluator(image_path, user_profile):
     except Exception as e:
         return {"error": str(e)}
 
+def save_llm_output(data, filename="temp_llm_output.json"):
+    """Saves the raw LLM analysis to a file for the scoring engine to read."""
+    with open(filename, "w") as f:
+        json.dump(data, f, indent=4)
+    print(f"✅ Data passed to Game Engine: {filename}")
 
 # --- HACKATHON DEMO ---
 if __name__ == "__main__":
@@ -111,5 +116,6 @@ if __name__ == "__main__":
 
     print("🥬 Letty is calculating your energy boost and burn rate...")
     result = letty_nutrition_evaluator(img_path, test_user)
+    save_llm_output(result)
 
     print(json.dumps(result, indent=4))
