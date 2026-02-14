@@ -6,6 +6,12 @@ from ..db import get_db
 
 router = APIRouter(prefix="/api/v1/energy", tags=["energy"])
 
+# GET ALL ENERGIES
+
+# GET ENERGIES LAST 24H
+
+
+
 
 def _hours_since(dt: datetime) -> float:
     now = datetime.now(timezone.utc)
