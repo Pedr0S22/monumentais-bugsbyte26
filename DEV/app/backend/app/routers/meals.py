@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 # Importa a tua função do ficheiro llm.py
-from llm.py import letty_nutrition_evaluator 
+from ..llm import letty_nutrition_evaluator 
 
 router = APIRouter(prefix="/api/v1/meals", tags=["meals"])
 
