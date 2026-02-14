@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  api:
+    build: ./DEV/app/backend
+    container_name: lettyquest-api
+    environment:
+      - APP_ENV=local
+      - DATABASE_URL=sqlite:///./data/app.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./DEV/app/backend/data:/app/data
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  frontend:
+    build:
+      context: ./DEV/app/frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://api:8000/api/v1
+    container_name: lettyquest-frontend
+    depends_on:
+      - api
+    ports:
+      - "4173:80"
