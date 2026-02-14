@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 # Configuration
 load_dotenv()
-HF_TOKEN = os.getenv("token")  # Ensure this is set in your environment variables
+HF_TOKEN = os.getenv("token")
 client = InferenceClient(
     model="Qwen/Qwen2.5-VL-7B-Instruct",
     token=HF_TOKEN
@@ -90,11 +90,9 @@ def letty_nutrition_evaluator(image_path, user_profile):
             ],
             max_tokens=900
         )
-
         content = response.choices[0].message.content
         json_match = re.search(r'\{.*\}', content, re.DOTALL)
         return json.loads(json_match.group()) if json_match else {"error": "Invalid output"}
-
     except Exception as e:
         return {"error": str(e)}
 
@@ -126,9 +124,8 @@ if __name__ == "__main__":
         "diet_type": "Omnivore / Balanced",
         "progress_status": "Emotional rollercoaster (inconsistent tracking this week)"
     }
-
-    img_path = r"C:\Users\ramya\Desktop\food picture.webp"
-    output_dir = "DEV/app/backend/app/routers/llm_output"
+    img_path = r"C:\Users\ramya\Desktop\mc donald food.avif"
+    output_dir = "DEV/app/backend/app/llm_output"
     print("🥬 Letty is calculating your energy boost and burn rate...")
     result = letty_nutrition_evaluator(img_path, test_user)
     save_llm_output(result, output_dir)
