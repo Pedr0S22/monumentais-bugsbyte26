@@ -8,19 +8,19 @@ interface PhoneFrameProps {
 
 export function PhoneFrame({ children }: PhoneFrameProps) {
   return (
-    <div className="relative mx-auto">
-      {/* Botões Físicos Laterais Esquerda (Volume) */}
-      <div className="absolute -left-1.5 top-24 h-12 w-1.5 rounded-l-md bg-zinc-800" />
-      <div className="absolute -left-1.5 top-40 h-12 w-1.5 rounded-l-md bg-zinc-800" />
+    <div className="relative mx-auto w-full h-[100dvh] md:w-auto md:h-auto">
+      {/* Botões Físicos Laterais Esquerda (Volume) - Hidden on mobile */}
+      <div className="absolute -left-1.5 top-24 hidden h-12 w-1.5 rounded-l-md bg-zinc-800 md:block" />
+      <div className="absolute -left-1.5 top-40 hidden h-12 w-1.5 rounded-l-md bg-zinc-800 md:block" />
       
-      {/* Botão Físico Lateral Direita (Power) */}
-      <div className="absolute -right-1.5 top-32 h-16 w-1.5 rounded-r-md bg-zinc-800" />
+      {/* Botão Físico Lateral Direita (Power) - Hidden on mobile */}
+      <div className="absolute -right-1.5 top-32 hidden h-16 w-1.5 rounded-r-md bg-zinc-800 md:block" />
 
-      {/* Corpo do Telemóvel com bordas pretas (Zinc-950) */}
-      <div className="relative mx-auto w-[320px] overflow-hidden rounded-[2.5rem] border-[8px] border-zinc-950 bg-background shadow-2xl ring-1 ring-zinc-800">
+      {/* Corpo do Telemóvel - Fullscreen on mobile, phone frame on desktop */}
+      <div className="relative mx-auto flex h-full w-full flex-col overflow-hidden bg-background shadow-2xl md:block md:h-auto md:w-[320px] md:rounded-[2.5rem] md:border-[8px] md:border-zinc-950 md:ring-1 md:ring-zinc-800">
         
-        {/* Status bar */}
-        <div className="relative z-10 flex items-center justify-between bg-background px-6 py-3">
+        {/* Status bar - Hidden on real mobile devices, visible on desktop mockup */}
+        <div className="relative z-10 hidden items-center justify-between bg-background px-6 py-3 md:flex">
           <span className="text-[12px] font-bold text-foreground">9:41</span>
           
           {/* Dynamic Island / Notch */}
@@ -40,12 +40,12 @@ export function PhoneFrame({ children }: PhoneFrameProps) {
         </div>
 
         {/* Content Area */}
-        <div className="flex h-[580px] flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden md:h-[580px]">
           {children}
         </div>
 
-        {/* Home Indicator (Barra inferior de navegação) */}
-        <div className="absolute bottom-1.5 left-1/2 h-1 w-32 -translate-x-1/2 rounded-full bg-foreground/20" />
+        {/* Home Indicator (Barra inferior de navegação) - Hidden on mobile */}
+        <div className="absolute bottom-1.5 left-1/2 hidden h-1 w-32 -translate-x-1/2 rounded-full bg-foreground/20 md:block" />
       </div>
     </div>
   )
