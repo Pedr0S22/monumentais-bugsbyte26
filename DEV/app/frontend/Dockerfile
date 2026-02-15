@@ -12,4 +12,4 @@ COPY . .
 EXPOSE 3000
 
 # Start the Next.js development server
-CMD ["pnpm", "dev", "--", "-H", "0.0.0.0"]
+CMD ["pnpm", "dev", "-H", "0.0.0.0"]

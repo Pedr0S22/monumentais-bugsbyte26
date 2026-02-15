@@ -29,7 +29,7 @@ export function getLettyMood(batteryLevel: number): LettyMood {
 
 // API polling intervals (in milliseconds)
 export const POLL_INTERVALS = {
-  BATTERY: 5000,       // 5 seconds - fast updates after meals
+  BATTERY: 10000,      // 10 seconds - synced with energy chart
   MEALS: 300000,       // 5 minutes
   PROFILE: 600000,     // 10 minutes
 } as const

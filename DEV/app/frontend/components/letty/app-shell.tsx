@@ -56,7 +56,7 @@ const API_BASE = "http://127.0.0.1:8000"
 
 export function AppShell() {
   const [state, setState] = useState<AppState>(initialState)
-  const [isLoading, setIsLoading] = useState(true) // Loading state
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -75,9 +75,12 @@ export function AppShell() {
 
       // 2. Fetch Profile Independently
       try {
+      try {
+        // 1. Fetch Profile
         const profileRes = await fetch(`${API_BASE}/api/v1/profile/${profileId}`);
         if (profileRes.ok) {
           const profileData = await profileRes.json();
+          const p = profileData.profile;
           const p = profileData.profile;
           setState(prev => ({
             ...prev,
@@ -92,19 +95,24 @@ export function AppShell() {
             }
           }));
         }
-      } catch (error) {
-        console.error("Failed to fetch profile:", error);
-      }
 
-      // 3. Fetch Energy Independently
-      try {
+        // 2. Fetch Meals
+        const mealsRes = await fetch(`${API_BASE}/api/v1/meals/${profileId}/recent`);
+        if (mealsRes.ok) {
+          const mealsData = await mealsRes.json();
+          setState(prev => ({ ...prev, meals: mealsData.meals || [] }));
+        }
+
+        // 3. Fetch Energy
         const energyRes = await fetch(`${API_BASE}/api/v1/energy/${profileId}/last`);
         if (energyRes.ok) {
           const energyData = await energyRes.json();
           setState(prev => ({ ...prev, battery: energyData.battery_level ?? 100 }));
         }
       } catch (error) {
-        console.error("Failed to fetch energy:", error);
+        console.error("Failed to load initial data:", error);
+      } finally {
+        setIsLoading(false);
       }
 
       // Once all fetches are done, stop loading!
