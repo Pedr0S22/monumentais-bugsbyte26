@@ -83,10 +83,13 @@ async def create_meal(
         ).fetchone()
 
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Recarga = boost da nova refeição (calculado sempre)
+        boost = letty_analysis["game_logic"].get("energy_boost", 0)
 
         if not last_battery:
-            # Primeiro registo: Começa a 50%
-            new_level = 50
+            # Primeiro registo: Começa a 50% + boost da primeira refeição
+            new_level = min(100, max(0, 50 + boost))
         else:
             # Calcular quanto a bateria desceu desde o último log
             last_time = datetime.strptime(last_battery.logged_at, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
@@ -94,9 +97,6 @@ async def create_meal(
             
             # Drenagem = tempo * taxa de queima anterior
             drain = diff_hours * last_battery.burn_rate_per_hour
-            
-            # Recarga = boost da nova refeição
-            boost = letty_analysis["game_logic"].get("energy_boost", 0)
             
             # Cálculo final com limites [0, 100]
             current_calc = last_battery.battery_level - drain + boost

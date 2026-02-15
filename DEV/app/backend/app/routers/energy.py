@@ -33,7 +33,7 @@ def get_energy(profile_id: int, db: Session = Depends(get_db)):
         SELECT battery_level, logged_at, focus_time, burn_rate_per_hour
         FROM battery
         WHERE profile_id = :profile_id
-        ORDER BY logged_at DESC
+        ORDER BY logged_at DESC, id DESC
         LIMIT 1
     """)
     result = db.execute(query, {"profile_id": profile_id}).fetchone()
@@ -78,7 +78,7 @@ def get_energy_history(profile_id: int, db: Session = Depends(get_db)):
         SELECT battery_level, logged_at, focus_time, burn_rate_per_hour
         FROM battery
         WHERE profile_id = :profile_id AND logged_at >= datetime('now', '-24 hours')
-        ORDER BY logged_at DESC
+        ORDER BY logged_at DESC, id DESC
     """)
     results = db.execute(query, {"profile_id": profile_id}).fetchall()
     

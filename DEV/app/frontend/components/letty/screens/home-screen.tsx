@@ -1,6 +1,8 @@
 "use client"
 
 import { LettyAdvisor, type MascotMood } from "../lettyadvisor"
+import { EnergyChart } from "../energy-chart"
+import { DEFAULT_PROFILE_ID } from "@/lib/constants"
 
 // Updated to include the 'mood' property coming from the backend
 interface Meal {
@@ -90,20 +92,8 @@ export function HomeScreen({ userData, meals = [] }: HomeScreenProps) {
         )}
       </div>
 
-      {/* Line chart de progresso */}
-      <div className="rounded-3xl bg-white p-4 shadow-sm border border-slate-100 mt-2">
-        <h3 className="mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Resumo de Progresso</h3>
-        <svg viewBox="0 0 200 60" className="w-full h-20" aria-label="Progress chart">
-          <polyline
-            points="0,50 30,35 60,40 90,20 120,25 150,10 180,15 200,5"
-            fill="none"
-            stroke="hsl(var(--primary))"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
+      {/* Dynamic Energy Chart - Last 24h */}
+      <EnergyChart profileId={DEFAULT_PROFILE_ID} />
     </div>
   )
 } 

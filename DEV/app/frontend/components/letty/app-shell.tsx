@@ -55,88 +55,53 @@ const API_BASE = "http://127.0.0.1:8000"
 
 export function AppShell() {
   const [state, setState] = useState<AppState>(initialState)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadInitialData = async () => {
       const profileId = 1;
 
-      // 1. Fetch Meals Independently
       try {
-        const mealsRes = await fetch(`${API_BASE}/api/v1/meals/${profileId}/recent`);
-        if (mealsRes.ok) {
-          const mealsData = await mealsRes.json();
-          // This will definitely set your meals now, even if other endpoints fail!
-          setState(prev => ({ ...prev, meals: mealsData.meals || [] }));
-        }
-      } catch (error) {
-        console.error("Failed to fetch meals:", error);
-      }
-
-      // 2. Fetch Profile Independently
-      try {
+        // 1. Fetch Profile
         const profileRes = await fetch(`${API_BASE}/api/v1/profile/${profileId}`);
         if (profileRes.ok) {
           const profileData = await profileRes.json();
+          const p = profileData.profile;
           setState(prev => ({
             ...prev,
-            score: profileData.profile?.points ?? prev.score,
+            score: p?.points ?? 0,
             userData: {
               ...prev.userData,
-              name: profileData.profile?.name ?? prev.userData.name,
-              membership: profileData.profile?.goal ?? prev.userData.membership
+              name: p?.name ?? "",
+              goal: p?.goal ?? "",
+              diet: p?.diet ?? "",
+              progress_status: p?.progress_status ?? "",
+              membership: p?.goal ?? ""
             }
           }));
         }
-      } catch (error) {
-        console.error("Failed to fetch profile:", error);
-      }
 
-      // 3. Fetch Energy Independently
-      try {
+        // 2. Fetch Meals
+        const mealsRes = await fetch(`${API_BASE}/api/v1/meals/${profileId}/recent`);
+        if (mealsRes.ok) {
+          const mealsData = await mealsRes.json();
+          setState(prev => ({ ...prev, meals: mealsData.meals || [] }));
+        }
+
+        // 3. Fetch Energy
         const energyRes = await fetch(`${API_BASE}/api/v1/energy/${profileId}/last`);
         if (energyRes.ok) {
           const energyData = await energyRes.json();
           setState(prev => ({ ...prev, battery: energyData.battery_level ?? 100 }));
         }
       } catch (error) {
-        console.error("Failed to fetch energy:", error);
+        console.error("Failed to load initial data:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     loadInitialData();
-  }, []);
-  const [isLoading, setIsLoading] = useState(true)
-
-  // 1. CARREGAMENTO INICIAL (GET Profile do Python)
-  useEffect(() => {
-    async function fetchUserData() {
-      try {
-        const response = await fetch("http://127.0.0.1:8000/api/v1/profile/1")
-        if (!response.ok) throw new Error("Falha ao carregar perfil")
-        
-        const data = await response.json()
-        const p = data.profile 
-
-        setState((prev) => ({
-          ...prev,
-          score: p.points || 0,
-          userData: {
-            ...prev.userData,
-            name: p.name,
-            goal: p.goal,
-            diet: p.diet,
-            progress_status: p.progress_status,
-            membership: p.diet 
-          },
-        }))
-      } catch (error) {
-        console.error("Erro na API de Perfil:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchUserData()
   }, [])
 
   const handleTabChange = useCallback((tab: TabId) => {
