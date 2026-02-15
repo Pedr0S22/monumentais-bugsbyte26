@@ -4,12 +4,12 @@ LettyQuest is a gamified nutrition companion built for the BugsByte 2026 hackath
 
 Instead of calorie counting, LettyQuest focuses on your **Human Energy Battery**, predicting focus vs. crashes based on calorie, satiety, and hydration.
 
-## 🥬 Introduction
+## Introduction
 
 **The Problem:** Many people who want to take on the challange of following a diet suffer from energy crashes and abandon traditional, boring food logs based apps and platforms.
-**The Solution:** A "Duolingo for diet adherence." Letty reacts to your choices (Happy/Neutral/Wilted), and the app provides an energy forecast driven by nutrition signals (Saturated fats, protein, fiber, hydration and kcal ).
+**The Solution:** A "Gamified app for diet adherence." Letty reacts to your choices (Happy/Neutral/Wilted), and the app provides an energy forecast driven by nutrition signals (Saturated fats, protein, fiber, hydration and kcal ).
 
-## 🏗️ Tech Stack
+## Tech Stack
 
 ### Frontend (Next.js)
 * **Framework:** Next.js 16 (App Router)
@@ -35,7 +35,7 @@ Instead of calorie counting, LettyQuest focuses on your **Human Energy Battery**
 * **Containerization:** Docker & Docker Compose
 * **Hot Reloading:** Enabled for both Frontend (Next.js Turbo) and Backend
 
-## 🧠 AI & Game Logic
+## AI & Game Logic
 
 The application processes data through three distinct "nodes" to ensure accurate and gamified feedback:
 
@@ -57,17 +57,18 @@ To prevent AI hallucinations in game mechanics, we use a deterministic scoring a
     * **Weight Gain ("The Density Game"):** Rewards high protein (>30g) and calorie density (>500kcal) while penalizing "dirty bulk" fats.
     * **Maintenance ("Balance"):** Rewards stability and moderate portions (400-800kcal).
 
-## ✨ Features
+## Features
 
 * **Meal Logging:** Log meals via text or camera to update Letty’s mood.
 * **Energy Bar:** A dynamic "Human Battery" that decays over time and recharges based on the quality of your meals.
-* **Letty Mascot:** * 🟢 **Happy:** High energy, balanced meals.
-    * 🟡 **Neutral:** Average energy.
-    * 🥀 **Wilted:** Energy crash or skipped meals.
+* **Letty Mascot:**
+    * **Happy:** High energy, balanced meals.
+    * **Neutral:** Average energy.
+    * **Wilted:** Energy crash or skipped meals.
 * **Smart Advice (RAG):** Chat with Letty to get nutrition tips based on curated guidelines, not hallucinations.
 * **Shop & Customization:** Earn currency to customize Letty (WIP).
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 .
@@ -77,9 +78,10 @@ To prevent AI hallucinations in game mechanics, we use a deterministic scoring a
 │   │   └── frontend   # Next.js application (Pages, Components)
 ├── PM                 # Project Management & Profiles
 ├── ARCH               # Architecture diagrams and deep dives
+├── PROD               # Product definitions & Design references
 ├── docker-compose.yml # Orchestration for local dev
 └── README.md          # You are here
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 * **Docker Desktop** (installed and running)
