@@ -18,10 +18,9 @@ interface AppState {
   mood: MascotMood
   userData: {
     name: string
-    username: string // Opcional, se não vier do backend ficará vazio
-    membership: string // Vamos mapear o 'diet' ou 'goal' aqui se quiseres
+    username: string
+    membership: string
     email: string
-    // Adicionamos os novos campos do teu GET:
     goal: string
     diet: string
     progress_status: string
@@ -53,16 +52,14 @@ export function AppShell() {
   const [state, setState] = useState<AppState>(initialState)
   const [isLoading, setIsLoading] = useState(true)
 
+  // 1. CARREGAMENTO INICIAL (GET Profile do Python)
   useEffect(() => {
     async function fetchUserData() {
       try {
-        const response = await fetch("http://localhost:8000/api/v1/profile/1")
+        const response = await fetch("http://127.0.0.1:8000/api/v1/profile/1")
         if (!response.ok) throw new Error("Falha ao carregar perfil")
         
         const data = await response.json()
-        
-        // REPARA AQUI: Acedemos a data.profile porque o teu backend
-        // encapsula os dados dentro dessa chave.
         const p = data.profile 
 
         setState((prev) => ({
@@ -74,7 +71,6 @@ export function AppShell() {
             goal: p.goal,
             diet: p.diet,
             progress_status: p.progress_status,
-            // Exemplo: usar o diet como membership label
             membership: p.diet 
           },
         }))
@@ -88,35 +84,32 @@ export function AppShell() {
     fetchUserData()
   }, [])
 
-  // 2. GESTÃO DE NAVEGAÇÃO
   const handleTabChange = useCallback((tab: TabId) => {
     setState((prev) => ({
       ...prev,
       activeTab: tab,
-      scanResult: null, // Reset ao resultado de scan sempre que muda de aba
-      // Mudança estética de humor conforme a secção
+      scanResult: null,
       mood: tab === "shop" ? "happy" : tab === "camera" ? "meh" : prev.mood,
     }))
   }, [])
 
-  // 3. CAPTURA E PROCESSAMENTO (Docker/Backend)
+  // 2. RESPOSTA DO POST (Vinda da CameraScreen)
   const handleCapture = useCallback((data: any) => {
     setState((prev) => ({
       ...prev,
-      // Atualiza o score (soma se vier xp_earned ou substitui se vier total)
-      score: data.xp_earned ? prev.score + data.xp_earned : (data.new_battery_level || prev.score),
+      // Soma o XP que o teu Python calculou
+      score: prev.score + (data.xp_earned || 0),
+      // Mapeia o resultado para o ecrã de feedback
       scanResult: {
         mood: data.mood as MascotMood,
         tip: data.tip,
-        mealName: data.meal_name || data.mealName, // Normalização de nomes
+        mealName: data.meal_name || "Refeição Analisada",
       },
       mood: data.mood as MascotMood,
     }))
   }, [])
 
-  // 4. LÓGICA DE RENDERIZAÇÃO DE ECRÃS
   const screenContent = useMemo(() => {
-    // Se houver um scan pendente, mostramos Feedback independente da aba selecionada
     if (state.scanResult) {
       return (
         <FeedbackScreen
@@ -130,7 +123,7 @@ export function AppShell() {
 
     switch (state.activeTab) {
       case "home":
-        return <HomeScreen userData={state.userData} onFormSubmit={() => {}} />
+        return <HomeScreen userData={state.userData} />
       case "chat":
         return <ChatScreen onSendMessage={() => {}} />
       case "camera":
@@ -144,10 +137,9 @@ export function AppShell() {
     }
   }, [state.activeTab, state.scanResult, state.userData, handleCapture])
 
-  // 5. VISIBILIDADE DO HEADER
   const showHeader = state.activeTab !== "camera" && !state.scanResult
 
-  // Tela de Loading (Letty a acordar)
+  // 3. ECRÃ DE LOADING CORRIGIDO (Não pode estar vazio)
   if (isLoading) {
     return (
       <PhoneFrame>
@@ -169,7 +161,6 @@ export function AppShell() {
         <AppHeader
           mood={state.mood}
           score={state.score}
-          // Se quiseres mostrar o progresso no header, podes passar state.userData.progress_status
         />
       )}
       <div className="flex flex-1 flex-col overflow-hidden relative">
