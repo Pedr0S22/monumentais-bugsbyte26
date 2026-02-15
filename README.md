@@ -1,76 +1,123 @@
 # LettyQuest - BugsByte Hackathon 2026
 
-LettyQuest is a gamified nutrition companion built for the BugsByte 2026 hackathon. Users log meals (text or photo), Letty the lettuce reacts with moods (happy/neutral/wilted), and a human energy bar predicts focus vs crash based on glycemic impact and satiety. The goal is to make meal logging fun, fast, and sticky—"Duolingo for diet adherence."
+LettyQuest is a gamified nutrition companion built for the BugsByte 2026 hackathon. It turns meal logging into a game where you keep "Letty"—your lettuce mascot—alive and happy.
 
-## Introduction
+Instead of calorie counting, LettyQuest focuses on your **Human Energy Battery**, predicting focus vs. crashes based on calorie, satiety, and hydration.
 
-Problem: people at a desk all day suffer energy crashes and drop traditional food logs. Solution: Letty turns nutrition into a game with points, streaks, and friendly nudges, plus an energy forecast driven by simple nutrition signals (GI/GL, protein, fiber, hydration).
+## 🥬 Introduction
 
-## Architecture
+**The Problem:** Many people who want to take on the challange of following a diet suffer from energy crashes and abandon traditional, boring food logs based apps and platforms.
+**The Solution:** A "Duolingo for diet adherence." Letty reacts to your choices (Happy/Neutral/Wilted), and the app provides an energy forecast driven by nutrition signals (Saturated fats, protein, fiber, hydration and kcal ).
 
-- Backend: FastAPI (Python) with scoring utilities and lightweight persistence (SQLite for local; Postgres optional via Docker).
-- Frontend: Web-only — React + TypeScript (Vite) with Tailwind for rapid styling. Letty states and energy bar visualize scores; meal log and chat panels drive interactions. Designs come from Figma, implemented via Builder.io (no direct export).
-- Optional: RAG chatbot over curated nutrition guidelines backed by a local LLM runtime (Ollama / Hugging Face); vector store (pgvector) if time allows.
-- See [ARCH/README.md](ARCH/README.md) for deeper system notes and diagrams.
-- Backend source is under DEV/app/backend.
-- DevOps: docker-compose at repo root runs the API with SQLite persistence and a frontend (served on http://localhost:4173, pointed at the api service).
-- Frontend scaffold lives under DEV/app/frontend (React + Vite + Tailwind).
-- Consolidated Python requirements in [requirements.txt](requirements.txt); backend-specific files remain under DEV/app/backend.
+## 🏗️ Tech Stack
 
-## Functionalities
+### Frontend (Next.js)
+* **Framework:** Next.js 16 (App Router)
+* **Language:** TypeScript
+* **Styling:** Tailwind CSS 4 + Shadcn/UI
+* **UI Components:**
+    * **Primitives:** Radix UI (Dialog, Dropdown, Accordion, etc.)
+    * **Icons:** Lucide React
+    * **Drawer:** Vaul
+    * **Carousel:** Embla Carousel
+    * **Toasts:** Sonner
+* **Visualization:** Recharts (for Energy Graph)
+* **Forms & Validation:** React Hook Form + Zod
+* **Theming:** Next-themes (Dark/Light mode)
+* **Date Handling:** Date-fns
 
-- Meal logging (text entry; photo stub/flow) that returns a meal quality score and updates Letty’s mood.
-- Human energy bar with decay over time, boosted by recent balanced meals; crash warnings for high GI loads.
-- Points, streaks, and objectives tied to meal quality and consistency.
-- Notifications: friendly nudges from Letty (web push/ in-app) about current energy state and when to eat to avoid a crash.
-- Chatbot (local LLM + RAG) for safe, guided tips; no medical diagnoses.
-- Biometrics input (weight, activity level, schedule) to personalize scoring and reminders.
+### Backend
+* **Framework:** FastAPI (Python 3.11+)
+* **Database:** SQLite (Relational data) + ChromaDB (Vector store for RAG)
+* **AI:** RAG pipeline for nutrition advice (supports local LLMs like Qwen)
 
-## Requirements
+### DevOps
+* **Containerization:** Docker & Docker Compose
+* **Hot Reloading:** Enabled for both Frontend (Next.js Turbo) and Backend
 
-- Python 3.11+ (FastAPI, Pydantic, Uvicorn)
-- Node.js 20+ with npm or pnpm (React, Vite, TypeScript)
-- Docker and Docker Compose (optional) for local, single-machine deployment
-- Optional local LLM runtime: Ollama or a lightweight Hugging Face model for the chatbot
+## 🧠 AI & Game Logic
 
-## Execution Instructions
+The application processes data through three distinct "nodes" to ensure accurate and gamified feedback:
 
-Prerequisites
-- Docker and Docker Compose
-- Open ports: 8000 (API), 4173 (Frontend)
+### 1. The Vision Node (LLM)
+We use **Qwen 2.5-VL-7B-Instruct** (via Hugging Face Inference) to "see" your food.
+* **Input:** User photo or text description.
+* **Task:** Identifies ingredients and estimates nutritional metrics (Protein, Fiber, Hydration, Saturated Fat, Kcal).
+* **Output:** Returns raw JSON data to our game engine.
 
-Steps
-1) First time or after code changes: `docker compose up --build -d`
-2) Subsequent runs (no rebuild needed): `docker compose up -d`
-2) Access:
-   - API docs: http://localhost:8000/docs
-   - Health: http://localhost:8000/api/v1/health
-   - Frontend: http://localhost:4173
-3) Stop: `docker compose down`
-4) Clear volumes (remove SQLite DB): `docker compose down -v`
-5) Reset the SQLite data file (after stopping the services):
-   - macOS/Linux: `rm DEV/app/backend/data/app.db`
-   - Windows PowerShell: `Remove-Item DEV\app\backend\data\app.db`
+### 2. The Scoring Node (Deterministic Engine)
+To prevent AI hallucinations in game mechanics, we use a deterministic scoring algorithm ("The Nuno Score") which we obtained by contacting a SME(subject matter expert) based on nutritional density.
 
-Useful commands
-- API logs: `docker compose logs -f api`
-- Frontend logs: `docker compose logs -f frontend`
+* **Satiety Index Formula:**
+    ```python
+    ((Protein * 2.0) + (Fiber * 5.0) + (Water_ml * 0.2) - (SatFat * 2.0)) / Kcal
+    ```
+* **Adaptive Goals:**
+    * **Weight Loss ("The Volume Game"):** Rewards high satiety (>15) and low calorie density.
+    * **Weight Gain ("The Density Game"):** Rewards high protein (>30g) and calorie density (>500kcal) while penalizing "dirty bulk" fats.
+    * **Maintenance ("Balance"):** Rewards stability and moderate portions (400-800kcal).
 
-Until code is committed, this repo holds the blueprint; check [DEV/app/README.md](DEV/app/README.md) for implementation details as they land.
+## ✨ Features
 
-## Further Information
+* **Meal Logging:** Log meals via text or camera to update Letty’s mood.
+* **Energy Bar:** A dynamic "Human Battery" that decays over time and recharges based on the quality of your meals.
+* **Letty Mascot:** * 🟢 **Happy:** High energy, balanced meals.
+    * 🟡 **Neutral:** Average energy.
+    * 🥀 **Wilted:** Energy crash or skipped meals.
+* **Smart Advice (RAG):** Chat with Letty to get nutrition tips based on curated guidelines, not hallucinations.
+* **Shop & Customization:** Earn currency to customize Letty (WIP).
 
-- Team profiles and contacts live under [PM/profiles](PM/profiles).
-- For design references, see the Figma link (once added) and product notes in [PROD](PROD).
+## 📂 Project Structure
 
-## Authors
+```text
+.
+├── DEV
+│   ├── app
+│   │   ├── backend    # FastAPI application, logic, and DB
+│   │   └── frontend   # Next.js application (Pages, Components)
+├── PM                 # Project Management & Profiles
+├── ARCH               # Architecture diagrams and deep dives
+├── docker-compose.yml # Orchestration for local dev
+└── README.md          # You are here
+## 🚀 Getting Started
 
-Monumentais Team BugsByte 2026 — see individual profiles in [PM/profiles](PM/profiles).
+### Prerequisites
+* **Docker Desktop** (installed and running)
+* **Git**
 
-## Disclaimer
+### Installation & Running
+The entire application (Frontend + API + Database) is containerized. You do not need to install Python or Node.js locally to run it.
 
-AI was used to build this project
+1.  **Clone the repository**
+    ```bash
+    git clone <repository-url>
+    cd monumentais-bugsbyte26
+    ```
 
-## License
+2.  **Start the application**
+    ```bash
+    # Build and start services in detached mode
+    docker compose up --build -d
+    ```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+3.  **Access the App**
+    * **Frontend:** [http://localhost:3000](http://localhost:3000)
+    * **API Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+4.  **Stopping the App**
+    ```bash
+    docker compose down
+    ```
+
+### Development Commands
+* **View Logs:** `docker compose logs -f` (Follows logs for both services)
+* **Rebuild specific service:** `docker compose up -d --build --no-deps frontend`
+* **Reset Database:**
+    ```bash
+    docker compose down -v
+    # Then delete the local SQLite file if it persists:
+    # rm DEV/app/backend/data/app.sqlite3
+    ```
+
+
+
