@@ -62,36 +62,22 @@ export function AppShell() {
     const loadInitialData = async () => {
       const profileId = 1;
 
-      // 1. Fetch Meals Independently
-      try {
-        const mealsRes = await fetch(`${API_BASE}/api/v1/meals/${profileId}/recent`);
-        if (mealsRes.ok) {
-          const mealsData = await mealsRes.json();
-          setState(prev => ({ ...prev, meals: mealsData.meals || [] }));
-        }
-      } catch (error) {
-        console.error("Failed to fetch meals:", error);
-      }
-
-      // 2. Fetch Profile Independently
-      try {
       try {
         // 1. Fetch Profile
         const profileRes = await fetch(`${API_BASE}/api/v1/profile/${profileId}`);
         if (profileRes.ok) {
           const profileData = await profileRes.json();
           const p = profileData.profile;
-          const p = profileData.profile;
           setState(prev => ({
             ...prev,
-            score: p?.points ?? prev.score,
+            score: p?.points ?? 0,
             userData: {
               ...prev.userData,
-              name: p?.name ?? prev.userData.name,
-              goal: p?.goal ?? prev.userData.goal,
-              diet: p?.diet ?? prev.userData.diet,
-              progress_status: p?.progress_status ?? prev.userData.progress_status,
-              membership: p?.diet ?? prev.userData.membership
+              name: p?.name ?? "",
+              goal: p?.goal ?? "",
+              diet: p?.diet ?? "",
+              progress_status: p?.progress_status ?? "",
+              membership: p?.goal ?? ""
             }
           }));
         }
@@ -114,9 +100,6 @@ export function AppShell() {
       } finally {
         setIsLoading(false);
       }
-
-      // Once all fetches are done, stop loading!
-      setIsLoading(false);
     };
 
     loadInitialData();
