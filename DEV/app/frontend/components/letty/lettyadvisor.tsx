@@ -4,8 +4,8 @@ import React from "react"
 import Image from "next/image"
 
 // Importa diretamente da mesma pasta onde está o componente
-import happyImg from "./sadletty_1@500x.png"
-import sadImg from "./letty_2@500x.png"
+import sadImg from "./sadletty_1@500x.png"
+import happyImg from "./letty_2@500x.png"
 import mehImg from "./mehletty@500x.png"
 
 export type MascotMood = "happy" | "sad" | "meh"

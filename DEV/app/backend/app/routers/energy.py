@@ -64,7 +64,7 @@ def get_energy(profile_id: int, db: Session = Depends(get_db)):
     # Fallback if no records exist yet
     return schemas.BatteryRead(
         code_status=200,
-        battery_level=100,
+        battery_level=50,
         crash_risk=False,
         logged_at=datetime.now(timezone.utc),
         focus_time=0.0,
