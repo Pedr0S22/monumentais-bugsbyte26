@@ -4,11 +4,24 @@ services:
     container_name: lettyquest-api
     environment:
       - APP_ENV=local
-      - DATABASE_URL=sqlite:///./data/app.sqlite3  # <--- MUDAR AQUI
+      - DATABASE_URL=sqlite:///./data/app.sqlite3
     ports:
       - "8000:8000"
     env_file:
       - DEV/app/backend/.env
     volumes:
+      - ./DEV/app/backend:/app # Mapeia o código para hot-reload
       - ./DEV/app/backend/data:/app/data
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+  
+  frontend:
+    build:
+      context: ./DEV/app/frontend
+      args:
+        - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    container_name: lettyquest-frontend
+    ports:
+      - "3000:3000"
+
+volumes:
+  letty_node_modules: {}

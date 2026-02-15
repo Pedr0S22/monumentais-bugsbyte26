@@ -1,23 +1,15 @@
-# --- Build Stage ---
-FROM node:20-alpine AS build
+FROM node:24-alpine
 WORKDIR /app
 
-# 1. Copy package files and install dependencies first (Cache efficient)
-COPY package.json package-lock.json* ./
-RUN npm install
+# Install pnpm and dependencies first (for caching)
+COPY package.json pnpm-lock.yaml* ./
+RUN npm install -g pnpm && pnpm install
 
-# 2. Copy EVERYTHING else (Source code, configs, html, etc.)
-# This replaces the lines that were failing
+# Copy the rest of the code
 COPY . .
 
-# 3. Build arguments and Build
-ARG VITE_API_BASE_URL=http://localhost:8000/api/v1
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-RUN npm run build
+# Expose Next.js port
+EXPOSE 3000
 
-# --- Run Stage ---
-FROM nginx:1.27-alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Start the Next.js development server
+CMD ["pnpm", "dev", "--", "-H", "0.0.0.0"]

@@ -123,19 +123,18 @@ def save_llm_output(data, output_dir, filename="temp_llm_output.json"):
     if not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir)
-            print(f"📁 Created new directory: {output_dir}")
+            print(f"Created new directory: {output_dir}")
         except OSError as e:
-            print(f"❌ Error creating directory: {e}")
+            print(f"Error creating directory: {e}")
             return
     
     full_path = os.path.join(output_dir, filename)
     
     with open(full_path, "w") as f:
         json.dump(data, f, indent=4)
-    print(f"✅ Data passed to Game Engine: {full_path}")
+    print(f"Data passed to Game Engine: {full_path}")
 
 # ChatBot queries
-
 def build_nutritionist_prompt(profile_id: int, user_question: str, rag_advice: str = "") -> str:
     """
     Constructs the prompt adhering to the new professional nutritionist persona and rules.
@@ -157,10 +156,10 @@ Give a personalized answer based on the user's question and profile. Do not give
 """
 
 def generate_reply(profile_id: int, message: str, rag_advice: str = "") -> str:
-    # 1. Generate the exact prompt
+    # Generate the exact prompt
     prompt = build_nutritionist_prompt(profile_id, message, rag_advice)
     
-    # 2. Call the actual HuggingFace LLM client you initialized at the top of the file
+    # Call the actual HuggingFace LLM client you initialized at the top of the file
     try:
         # Wrap the prompt in the standard messages format required by the client
         response = client.chat_completion(
@@ -184,7 +183,7 @@ if __name__ == "__main__":
     }
     img_path = r"C:\Users\ramya\Desktop\mc donald food.avif"
     output_dir = "DEV/app/backend/app/llm_output"
-    print("🥬 Letty is calculating your energy boost and burn rate...")
-    result = letty_nutrition_evaluator(img_path, test_user)
+    print("Letty is calculating your energy boost and burn rate...")
+    result = letty_nutrition_evaluator(test_user, image_path=img_path, user_text="This is my meal for today i ialso had a soup.")
     save_llm_output(result, output_dir)
     print(json.dumps(result, indent=4))

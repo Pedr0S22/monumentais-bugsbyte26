@@ -10,7 +10,6 @@ class Settings(BaseSettings):
     environment: str = Field("local", env="APP_ENV")
     llm_model: str = Field("llama3", env="LLM_MODEL")
 
-    # Use model_config for Pydantic V2 instead of the inner Config class
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "..", ".env"),
         env_file_encoding="utf-8",

@@ -4,7 +4,7 @@ from sqlalchemy import text
 from typing import Optional
 from .. import schemas
 from ..db import get_db
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 import os
@@ -12,8 +12,7 @@ import shutil
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-# Importa a tua função do ficheiro llm.py
-from ..llm import letty_nutrition_evaluator 
+from ..llm import letty_nutrition_evaluator
 from ..scoring import calculate_nuno_score
 
 router = APIRouter(prefix="/api/v1/meals", tags=["meals"])
@@ -26,30 +25,25 @@ async def create_meal(
 ):
     temp_path = None
     try:
-        # 1. Gestão de Imagem Temporária
+        # Gestão de Imagem Temporária
         if image:
             temp_path = f"temp_{image.filename}"
             with open(temp_path, "wb") as buffer:
                 shutil.copyfileobj(image.file, buffer)
 
-        # 2. Obter Perfil do Utilizador
-        # 2. Obter Perfil Completo
+        # Obter Perfil do Utilizador
         user_row = db.execute(
-            text("SELECT * FROM profile WHERE id = :id"), # O '*' puxa TODAS as colunas da tabela
+            text("SELECT * FROM profile WHERE id = :id"),
             {"id": profile_id}
         ).fetchone()
 
         if not user_row:
             raise HTTPException(status_code=404, detail="Profile not found")
 
-        # 3. Transformar em dicionário automático
         user_profile = dict(user_row._mapping)
 
-        # 4. Ajuste rápido: A IA quer 'diet_type', mas na BD chama-se 'diet'
-        # Criamos uma cópia do valor com o nome que a IA gosta
         user_profile["diet_type"] = user_profile["diet"]
 
-        # 5. Agora podes chamar a IA sem medo de KeyErrors
         letty_analysis = letty_nutrition_evaluator(
             user_profile=user_profile,
             image_path=temp_path,
@@ -57,7 +51,7 @@ async def create_meal(
         )
 
 
-        # 3. Análise da IA Letty
+        # Análise da IA Letty
         letty_analysis = letty_nutrition_evaluator(
             user_profile=user_profile,
             image_path=temp_path,
@@ -67,7 +61,7 @@ async def create_meal(
         if "error" in letty_analysis:
             raise HTTPException(status_code=400, detail=letty_analysis["error"])
 
-        # 4. Motor de Jogo: Calcular XP e Satiety (O teu motor de scoring)
+        # Motor de Jogo: Calcular XP e Satiety
         game_results = calculate_nuno_score(
             metrics=letty_analysis["nutritional_metrics"], 
             user_goal=user_profile["goal"]
@@ -75,28 +69,28 @@ async def create_meal(
         
         xp_earned = game_results["xp_earned"]
 
-        # --- LÓGICA DE BATERIA (DRENAGEM E RECARGA) ---
+        # LÓGICA DE BATERIA (DRENAGEM E RECARGA)
 
-        # 5. Recuperar estado anterior da bateria
+        # Recuperar estado anterior da bateria
         last_battery = db.execute(
             text("""
-                SELECT battery_level, burn_rate_per_hour, logged_at 
-                FROM battery 
-                WHERE profile_id = :pid 
+                SELECT battery_level, burn_rate_per_hour, logged_at
+                FROM battery
+                WHERE profile_id = :pid
                 ORDER BY logged_at DESC LIMIT 1
             """),
             {"pid": profile_id}
         ).fetchone()
 
-        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
         if not last_battery:
             # Primeiro registo: Começa a 100%
             new_level = 100
         else:
             # Calcular quanto a bateria desceu desde o último log
-            last_time = datetime.strptime(last_battery.logged_at, "%Y-%m-%d %H:%M:%S")
-            diff_hours = (datetime.now() - last_time).total_seconds() / 3600
+            last_time = datetime.strptime(last_battery.logged_at, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+            diff_hours = (datetime.now(timezone.utc) - last_time).total_seconds() / 3600
             
             # Drenagem = tempo * taxa de queima anterior
             drain = diff_hours * last_battery.burn_rate_per_hour
@@ -108,9 +102,9 @@ async def create_meal(
             current_calc = last_battery.battery_level - drain + boost
             new_level = min(100, max(0, int(current_calc)))
 
-        # --- PERSISTÊNCIA NA BASE DE DADOS ---
+        # PERSISTÊNCIA NA BASE DE DADOs
 
-        # 6. Registar no Histórico de Refeições
+        # Registar no Histórico de Refeições
         db.execute(
             text("""
                 INSERT INTO letty_historic (
@@ -136,7 +130,7 @@ async def create_meal(
             }
         )
 
-        # 7. Criar novo estado de Bateria
+        # Criar novo estado de Bateria
         db.execute(
             text("""
                 INSERT INTO battery (profile_id, battery_level, focus_time, burn_rate_per_hour, logged_at)
@@ -151,7 +145,7 @@ async def create_meal(
             }
         )
 
-        # 8. Atualizar XP do Perfil
+        # Atualizar XP do Perfil
         db.execute(
             text("UPDATE profile SET points = points + :xp WHERE id = :id"),
             {"xp": xp_earned, "id": profile_id}
@@ -160,13 +154,22 @@ async def create_meal(
         db.commit()
 
         return {
-            "status": "success",
+            "status_code": 200,
             "xp_earned": xp_earned,
             "new_battery_level": new_level,
             "meal_name": letty_analysis["meal_name"],
-            "mood": letty_analysis["letty_feedback"]["mood"], 
-            "tip": letty_analysis["letty_feedback"]["tip"],   
-            "feedback": game_results["feedback"]              
+            "nutrition_values":{
+                "protein": letty_analysis["nutritional_metrics"]["protein_grams"],
+                "fiber": letty_analysis["nutritional_metrics"]["fiber_grams"],
+                "hydration": letty_analysis["nutritional_metrics"]["hydration_ml"],
+                "saturated_fat": letty_analysis["nutritional_metrics"]["saturated_fat_grams"],
+                "energy": letty_analysis["nutritional_metrics"]["energy_kcal"],
+            },
+            "mood": letty_analysis["letty_feedback"]["mood"],
+            "tip": letty_analysis["letty_feedback"]["tip"],
+            "feedback": game_results["feedback"],
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
         }
 
     except Exception as e:
@@ -182,7 +185,7 @@ def get_recent_meals(profile_id: int, db: Session = Depends(get_db)):
         SELECT meal, energy, hydration, fiber, saturated_fat, protein
         FROM letty_historic
         WHERE profile_id = :profile_id
-        ORDER BY logged_at DESC 
+        ORDER BY logged_at DESC
         LIMIT 3
     """)
     results = db.execute(query, {"profile_id": profile_id}).fetchall()
@@ -191,12 +194,16 @@ def get_recent_meals(profile_id: int, db: Session = Depends(get_db)):
     meals = []
     for row in results:
         meals.append({
+            "status_code": 200,
             "meal": row.meal,
-            "energy": row.energy,
-            "hydration": row.hydration,
-            "fiber": row.fiber,
-            "saturated_fat": row.saturated_fat,
-            "protein": row.protein
+            "nutrition_values":{
+                "energy": row.energy,
+                "hydration": row.hydration,
+                "fiber": row.fiber,
+                "saturated_fat": row.saturated_fat,
+                "protein": row.protein,
+            },
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         })
     
     return {"meals": meals}
@@ -214,12 +221,16 @@ def get_all_meals(profile_id: int, db: Session = Depends(get_db)):
     meals = []
     for row in results:
         meals.append({
+            "status_code": 200,
             "meal": row.meal,
-            "energy": row.energy,
-            "hydration": row.hydration,
-            "fiber": row.fiber,
-            "saturated_fat": row.saturated_fat,
-            "protein": row.protein
+            "nutrition_values":{
+                "energy": row.energy,
+                "hydration": row.hydration,
+                "fiber": row.fiber,
+                "saturated_fat": row.saturated_fat,
+                "protein": row.protein,
+            },
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         })
     
     return {"meals": meals}
