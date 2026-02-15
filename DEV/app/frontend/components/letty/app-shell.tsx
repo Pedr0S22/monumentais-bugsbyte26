@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo, useEffect } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { PhoneFrame } from "./phone-frame"
 import { AppHeader } from "./app-header"
 import { BottomNav, type TabId } from "./bottom-nav"
@@ -37,6 +37,7 @@ interface AppState {
 const initialState: AppState = {
   activeTab: "home",
   score: 0,
+  battery: 100, // Make sure battery initializes at 100
   mood: "happy",
   meals: [],
   userData: {
@@ -55,6 +56,7 @@ const API_BASE = "http://127.0.0.1:8000"
 
 export function AppShell() {
   const [state, setState] = useState<AppState>(initialState)
+  const [isLoading, setIsLoading] = useState(true) // Loading state
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -65,7 +67,6 @@ export function AppShell() {
         const mealsRes = await fetch(`${API_BASE}/api/v1/meals/${profileId}/recent`);
         if (mealsRes.ok) {
           const mealsData = await mealsRes.json();
-          // This will definitely set your meals now, even if other endpoints fail!
           setState(prev => ({ ...prev, meals: mealsData.meals || [] }));
         }
       } catch (error) {
@@ -77,13 +78,17 @@ export function AppShell() {
         const profileRes = await fetch(`${API_BASE}/api/v1/profile/${profileId}`);
         if (profileRes.ok) {
           const profileData = await profileRes.json();
+          const p = profileData.profile;
           setState(prev => ({
             ...prev,
-            score: profileData.profile?.points ?? prev.score,
+            score: p?.points ?? prev.score,
             userData: {
               ...prev.userData,
-              name: profileData.profile?.name ?? prev.userData.name,
-              membership: profileData.profile?.goal ?? prev.userData.membership
+              name: p?.name ?? prev.userData.name,
+              goal: p?.goal ?? prev.userData.goal,
+              diet: p?.diet ?? prev.userData.diet,
+              progress_status: p?.progress_status ?? prev.userData.progress_status,
+              membership: p?.diet ?? prev.userData.membership
             }
           }));
         }
@@ -101,43 +106,13 @@ export function AppShell() {
       } catch (error) {
         console.error("Failed to fetch energy:", error);
       }
+
+      // Once all fetches are done, stop loading!
+      setIsLoading(false);
     };
 
     loadInitialData();
   }, []);
-  const [isLoading, setIsLoading] = useState(true)
-
-  // 1. CARREGAMENTO INICIAL (GET Profile do Python)
-  useEffect(() => {
-    async function fetchUserData() {
-      try {
-        const response = await fetch("http://127.0.0.1:8000/api/v1/profile/1")
-        if (!response.ok) throw new Error("Falha ao carregar perfil")
-        
-        const data = await response.json()
-        const p = data.profile 
-
-        setState((prev) => ({
-          ...prev,
-          score: p.points || 0,
-          userData: {
-            ...prev.userData,
-            name: p.name,
-            goal: p.goal,
-            diet: p.diet,
-            progress_status: p.progress_status,
-            membership: p.diet 
-          },
-        }))
-      } catch (error) {
-        console.error("Erro na API de Perfil:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchUserData()
-  }, [])
 
   const handleTabChange = useCallback((tab: TabId) => {
     setState((prev) => ({
@@ -149,11 +124,19 @@ export function AppShell() {
   }, [])
 
   const handleCapture = useCallback((data: any) => {
+    // Format the new meal exactly how the HomeScreen expects it
+    const newMeal = {
+      meal: data.meal_name || "Nova Refeição",
+      nutrition_values: data.nutrition_values || { energy: 0, protein: 0 },
+      mood: data.mood,
+      timestamp: data.timestamp || new Date().toISOString()
+    };
+
     setState((prev) => ({
       ...prev,
-      // Soma o XP que o teu Python calculou
       score: prev.score + (data.xp_earned || 0),
-      // Mapeia o resultado para o ecrã de feedback
+      battery: data.new_battery_level ?? prev.battery,
+      meals: [newMeal, ...prev.meals],
       scanResult: {
         mood: data.mood as MascotMood,
         tip: data.tip,
@@ -163,37 +146,9 @@ export function AppShell() {
     }))
   }, [])
 
-  const screenContent = useMemo(() => {
-    if (state.scanResult) {
-      return (
-        <FeedbackScreen
-          mood={state.scanResult.mood}
-          tip={state.scanResult.tip}
-          mealName={state.scanResult.mealName}
-          onClose={() => setState(prev => ({ ...prev, scanResult: null, activeTab: "home" }))}
-        />
-      )
-    }
-
-    switch (state.activeTab) {
-      case "home":
-        return <HomeScreen userData={state.userData} />
-      case "chat":
-        return <ChatScreen onSendMessage={() => {}} />
-      case "camera":
-        return <CameraScreen onCapture={handleCapture} />
-      case "shop":
-        return <ShopScreen onPurchase={() => {}} onFormSubmit={() => {}} />
-      case "user":
-        return <UserScreen userData={state.userData} onFormSubmit={() => {}} onAction={() => {}} />
-      default:
-        return null
-    }
-  }, [state.activeTab, state.scanResult, state.userData, handleCapture])
-
   const showHeader = state.activeTab !== "camera" && !state.scanResult
 
-  // 3. ECRÃ DE LOADING CORRIGIDO (Não pode estar vazio)
+  // LOADING SCREEN
   if (isLoading) {
     return (
       <PhoneFrame>
@@ -214,9 +169,11 @@ export function AppShell() {
       {showHeader && (
         <AppHeader
           mood={state.mood}
-          profileId={1}
+          score={state.score}
+          battery={state.battery}
         />
       )}
+      
       <div className="flex flex-1 flex-col overflow-hidden relative">
         {state.scanResult ? (
           <FeedbackScreen
@@ -227,7 +184,7 @@ export function AppShell() {
           />
         ) : (
           <>
-            {/* The "hidden" class prevents React from destroying the screen when you switch tabs! */}
+            {/* O "hidden" impede que os ecrãs sejam destruídos ao mudar de tab! */}
             <div className={state.activeTab === "home" ? "flex flex-1 flex-col h-full overflow-hidden" : "hidden"}>
               <HomeScreen userData={state.userData} meals={state.meals} />
             </div>
@@ -241,11 +198,20 @@ export function AppShell() {
             </div>
             
             <div className={state.activeTab === "shop" ? "flex flex-1 flex-col h-full overflow-hidden" : "hidden"}>
-              <ShopScreen onPurchase={() => {}} onFormSubmit={() => {}} />
+              <ShopScreen 
+                score={state.score} // <-- Pass the score from state here
+                onPurchase={() => {}} 
+                onFormSubmit={() => {}} 
+              />
             </div>
             
             <div className={state.activeTab === "user" ? "flex flex-1 flex-col h-full overflow-hidden" : "hidden"}>
-              <UserScreen userData={state.userData} onFormSubmit={() => {}} onAction={() => {}} />
+              <UserScreen 
+                userData={state.userData} 
+                score={state.score} // <-- Add this to sync Points with Header XP
+                onFormSubmit={() => {}} 
+                onAction={() => {}} 
+              />
             </div>
           </>
         )}

@@ -1,3 +1,5 @@
+/* frontend/components/letty/screens/user-screen.tsx */
+
 "use client"
 
 import { DynamicForm, type FormField } from "../dynamic-form"
@@ -9,9 +11,8 @@ interface UserScreenProps {
     username: string
     membership: string
     email?: string
-    points: number // 1. Adicionado aqui
-    streak: number // Adicionado para ser dinâmico também
   }
+  score: number // Pass the XP/Score here
   onFormSubmit?: (data: Record<string, string | boolean>) => void
   onAction?: (action: string) => void
 }
@@ -30,38 +31,41 @@ const menuItems = [
   { id: "logout", label: "Sair", icon: LogOut },
 ]
 
-export function UserScreen({ userData, onFormSubmit, onAction }: UserScreenProps) {
+export function UserScreen({ userData, score, onFormSubmit, onAction }: UserScreenProps) {
+  // Default streak value
+  const defaultStreak = 7;
+
   return (
     <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
       {/* Avatar + info */}
       <div className="flex flex-col items-center gap-2 rounded-2xl bg-card p-4 shadow-sm border border-border/50">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/10 border-2 border-emerald-500/20">
           <span className="text-2xl font-black text-emerald-500">
-            {userData.name}
+            {userData.name.charAt(0) || "U"}
           </span>
         </div>
         <div className="text-center">
           <h2 className="text-sm font-bold text-foreground">{userData.name}</h2>
-          <p className="text-xs text-muted-foreground">@{userData.username}</p>
+          <p className="text-xs text-muted-foreground">@{userData.username || "utilizador"}</p>
           <span className="mt-2 inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-500">
             {userData.membership}
           </span>
         </div>
       </div>
 
-      {/* Quick tiles - AGORA DINÂMICOS */}
+      {/* Quick tiles */}
       <div className="grid grid-cols-2 gap-2">
         <div className="flex flex-col items-center rounded-2xl bg-card p-4 shadow-sm border border-border/40">
-          <span className="text-lg font-black text-emerald-500">{userData.streak}</span>
+          <span className="text-lg font-black text-emerald-500">{defaultStreak}</span>
           <span className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground">Streak</span>
         </div>
         <div className="flex flex-col items-center rounded-2xl bg-card p-4 shadow-sm border border-border/40">
-          {/* 2. PONTOS DA API AQUI */}
-          <span className="text-lg font-black text-emerald-500">{userData.points}</span>
-
+          {/* Dynamic XP Score */}
+          <span className="text-lg font-black text-emerald-500">{score}</span>
           <span className="text-[9px] font-bold uppercase tracking-tighter text-muted-foreground">Pontos</span>
         </div>
       </div>
+
       {/* Menu items */}
       <div className="rounded-2xl bg-card shadow-sm">
         {menuItems.map((item, i) => {

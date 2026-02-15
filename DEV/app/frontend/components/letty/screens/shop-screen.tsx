@@ -1,3 +1,5 @@
+/* frontend/components/letty/screens/shop-screen.tsx */
+
 "use client"
 
 import { DynamicForm, type FormField } from "../dynamic-form"
@@ -12,6 +14,7 @@ interface Product {
 }
 
 interface ShopScreenProps {
+  score: number; 
   onPurchase?: (productId: string) => void
   onFormSubmit?: (data: Record<string, string | boolean>) => void
 }
@@ -23,20 +26,20 @@ const products: Product[] = [
   { id: "4", name: "Kit de sementes", description: "Ervas aromaticas", points: 250, rating: 4.6 },
 ]
 
-
-export function ShopScreen({ onPurchase, onFormSubmit }: ShopScreenProps) {
+// Make sure 'score' is destuctured here:
+export function ShopScreen({ score, onPurchase, onFormSubmit }: ShopScreenProps) {
   return (
     <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
-      {/* Title */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-foreground">Loja</h2>
         <div className="flex items-center gap-1 rounded-full bg-accent/20 px-2 py-0.5">
           <ShoppingBag size={12} className="text-accent-foreground" />
-          <span className="text-[10px] font-semibold text-accent-foreground">1265 pts</span>
+          {/* CHANGE THIS LINE BELOW: */}
+          <span className="text-[10px] font-semibold text-accent-foreground">{score} pts</span>
         </div>
       </div>
 
-      {/* Product grid */}
+      {/* Product grid remains same... */}
       <div className="grid grid-cols-2 gap-2">
         {products.map((product) => (
           <div key={product.id} className="flex flex-col rounded-2xl bg-card p-3 shadow-sm">
