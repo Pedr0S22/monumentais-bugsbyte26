@@ -2,6 +2,8 @@ from fastapi import APIRouter
 from .. import schemas
 from ..llm import generate_reply
 from ..embeddings_extractor import get_vector_store
+from datetime import datetime, timezone
+
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 
@@ -33,6 +35,8 @@ def chat(payload: schemas.ChatRequest):
     )
     
     return schemas.ChatResponse(
-        reply=llm_reply,
-        source="rag-chromadb"
+        status_code= 200,
+        message= llm_reply,
+        source= "rag-chromadb",
+        timestamp= datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     )
