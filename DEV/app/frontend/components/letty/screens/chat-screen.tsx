@@ -11,7 +11,7 @@ interface Message {
 }
 
 const initialMessages: Message[] = [
-  { id: "1", text: "Olá! Eu sou a Letty. Como posso ajudar?", sender: "bot", timestamp: "09:00" },
+  { id: "1", text: "Olá! Eu sou a Letty. Como posso ajudar?", sender: "bot", timestamp: new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }), },
 ]
 
 export function ChatScreen() {
@@ -27,7 +27,7 @@ export function ChatScreen() {
     }
   }, [messages, isTyping])
 
-  const handleSend = (e: FormEvent) => {
+  const handleSend = async (e: FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isTyping) return
 
@@ -44,18 +44,34 @@ export function ChatScreen() {
     // Inicia o estado de "pensar"
     setIsTyping(true)
 
-    // Simulação de resposta da Letty
-    setTimeout(() => {
+    try {
+      // Faz o fetch ao endpoint real
+      const response = await fetch("http://127.0.0.1:8000/api/v1/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMsg.text, profile_id: 1 })
+      })
+      
+      const data = await response.json()
+
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Estou a analisar o que disseste... Sabias que podes subir de nível ao completar os desafios de hoje?",
+        text: data.message, // Mensagem gerada pelo backend
         sender: "bot",
         timestamp: new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
       }
-      
       setMessages((prev) => [...prev, botMsg])
+    } catch (error) {
+      console.error("Erro no chat:", error)
+      setMessages((prev) => [...prev, {
+        id: (Date.now() + 1).toString(),
+        text: "Oops, tive um problema de ligação ao servidor. Tenta novamente!",
+        sender: "bot",
+        timestamp: new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }),
+      }])
+    } finally {
       setIsTyping(false) // Para de pensar
-    }, 2500) // Tempo que ela fica a pensar
+    }
   }
 
   return (
