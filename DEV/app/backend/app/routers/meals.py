@@ -61,7 +61,7 @@ async def create_meal(
         if "error" in letty_analysis:
             raise HTTPException(status_code=400, detail=letty_analysis["error"])
 
-        # Motor de Jogo: Calcular XP e Satiety (O teu motor de scoring)
+        # Motor de Jogo: Calcular XP e Satiety
         game_results = calculate_nuno_score(
             metrics=letty_analysis["nutritional_metrics"], 
             user_goal=user_profile["goal"]
@@ -69,7 +69,7 @@ async def create_meal(
         
         xp_earned = game_results["xp_earned"]
 
-        # --- LÓGICA DE BATERIA (DRENAGEM E RECARGA) ---
+        # LÓGICA DE BATERIA (DRENAGEM E RECARGA)
 
         # Recuperar estado anterior da bateria
         last_battery = db.execute(
@@ -89,7 +89,7 @@ async def create_meal(
             new_level = 100
         else:
             # Calcular quanto a bateria desceu desde o último log
-            last_time = datetime.strptime(last_battery.logged_at, "%Y-%m-%d %H:%M:%S")
+            last_time = datetime.strptime(last_battery.logged_at, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
             diff_hours = (datetime.now(timezone.utc) - last_time).total_seconds() / 3600
             
             # Drenagem = tempo * taxa de queima anterior
@@ -102,7 +102,7 @@ async def create_meal(
             current_calc = last_battery.battery_level - drain + boost
             new_level = min(100, max(0, int(current_calc)))
 
-        # --- PERSISTÊNCIA NA BASE DE DADOS ---
+        # PERSISTÊNCIA NA BASE DE DADOs
 
         # Registar no Histórico de Refeições
         db.execute(
@@ -154,13 +154,22 @@ async def create_meal(
         db.commit()
 
         return {
-            "status": "success",
+            "status_code": 200,
             "xp_earned": xp_earned,
             "new_battery_level": new_level,
             "meal_name": letty_analysis["meal_name"],
+            "nutrition_values":{
+                "protein": letty_analysis["nutritional_metrics"]["protein_grams"],
+                "fiber": letty_analysis["nutritional_metrics"]["fiber_grams"],
+                "hydration": letty_analysis["nutritional_metrics"]["hydration_ml"],
+                "saturated_fat": letty_analysis["nutritional_metrics"]["saturated_fat_grams"],
+                "energy": letty_analysis["nutritional_metrics"]["energy_kcal"],
+            },
             "mood": letty_analysis["letty_feedback"]["mood"],
             "tip": letty_analysis["letty_feedback"]["tip"],
-            "feedback": game_results["feedback"]
+            "feedback": game_results["feedback"],
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
         }
 
     except Exception as e:
@@ -185,12 +194,16 @@ def get_recent_meals(profile_id: int, db: Session = Depends(get_db)):
     meals = []
     for row in results:
         meals.append({
+            "status_code": 200,
             "meal": row.meal,
-            "energy": row.energy,
-            "hydration": row.hydration,
-            "fiber": row.fiber,
-            "saturated_fat": row.saturated_fat,
-            "protein": row.protein
+            "nutrition_values":{
+                "energy": row.energy,
+                "hydration": row.hydration,
+                "fiber": row.fiber,
+                "saturated_fat": row.saturated_fat,
+                "protein": row.protein,
+            },
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         })
     
     return {"meals": meals}
@@ -208,12 +221,16 @@ def get_all_meals(profile_id: int, db: Session = Depends(get_db)):
     meals = []
     for row in results:
         meals.append({
+            "status_code": 200,
             "meal": row.meal,
-            "energy": row.energy,
-            "hydration": row.hydration,
-            "fiber": row.fiber,
-            "saturated_fat": row.saturated_fat,
-            "protein": row.protein
+            "nutrition_values":{
+                "energy": row.energy,
+                "hydration": row.hydration,
+                "fiber": row.fiber,
+                "saturated_fat": row.saturated_fat,
+                "protein": row.protein,
+            },
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         })
     
     return {"meals": meals}

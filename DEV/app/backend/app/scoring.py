@@ -11,12 +11,12 @@ def load_llm_data():
     """Reads the raw data from the specific directory."""
     file_path = os.path.join(TARGET_DIRECTORY, INPUT_FILENAME)
     if not os.path.exists(file_path):
-        print(f"❌ Error: Could not find file at {file_path}")
+        print(f"Error: Could not find file at {file_path}")
         print("   -> Did you run the LLM script first?")
         return None
         
     with open(file_path, "r") as f:
-        print(f"📂 Loading data from: {file_path}")
+        print(f"Loading data from: {file_path}")
         return json.load(f)
 
 def calculate_nuno_score(metrics, user_goal):
@@ -25,7 +25,7 @@ def calculate_nuno_score(metrics, user_goal):
     - Weight Gain = Low Satiety / High Energy (Density)
     """
     
-    # 1. Extract Metrics (Safe Defaults)
+    # Extract Metrics (Safe Defaults)
     p = metrics.get("protein_grams", 0)
     f = metrics.get("fiber_grams", 0)
     w = metrics.get("hydration_ml", 0)
@@ -33,7 +33,7 @@ def calculate_nuno_score(metrics, user_goal):
     sf = metrics.get("saturated_fat_grams", 0)
     
 
-    # 2. Calculate Satiety Index (SI)
+    # calculate Satiety Index (SI)
     # This formula rewards Volume (Fiber/Water/Protein) relative to Calories
     numerator=(p * 2.0) + (f * 5.0) + (w * 0.2)-(sf* 2.0)
     satiety_index = (numerator / kcal * 100) if kcal > 0 else 0
@@ -55,24 +55,25 @@ def calculate_nuno_score(metrics, user_goal):
             xp = 40
             feedback = "⚠️ Calorie Dense! Small portion, high energy. Watch out."
 
-    # --- RULE SET 2: WEIGHT GAIN ("The Density Game") ---
+    # RULE SET 2: WEIGHT GAIN ("The Density Game")
     elif "gain" in user_goal.lower() or "muscle" in user_goal.lower():
         # Ideal: High Calories (>500), High Protein (>25g)
         # Logic: "Little volume, lots of energy"
-        # 1. Clean Bulk (Perfect)
+
+        # Clean Bulk (Perfect)
         if kcal > 500 and p > 30 and sf < 10:
             xp = 100
             feedback = "🦍 BEAST MODE! High energy & protein."
             bonus_tag = "Gains Secured"
-        # 2. Dirty Bulk (Good stats, bad fat) - FIX: Changed OR to AND logic
+        # Dirty Bulk (Good stats, bad fat) - FIX: Changed OR to AND logic
         elif kcal > 500 and p > 25:
             xp = 75
-            feedback = "💪 Gains Secured. Warning: High saturated fat detected."
+            feedback = "Gains Secured. Warning: High saturated fat detected."
             bonus_tag = "Dirty Bulk"
-        # 3. Under-eating (Failure)
+        # Under-eating (Failure)
         elif kcal < 300:
             xp = 30
-            feedback = "❌ Too light! You need more fuel to grow."
+            feedback = "Too light! You need more fuel to grow."
             bonus_tag = "Catabolic"
         # 4. Average
         else:
@@ -80,26 +81,26 @@ def calculate_nuno_score(metrics, user_goal):
             feedback = "Decent protein, but try to increase calorie density."
     # --- RULE SET 3: MAINTENANCE ---
     else:
-        # 1. PERFECT BALANCE
+        # PERFECT BALANCE
         # Calories in range (400-800), Good Protein, Low Sat Fat
         if 400 <= kcal <= 800 and p > 20 and f > 5 and sf < 8:
             xp = 100
-            feedback = "⚖️ Perfect Balance. Stable energy, zero crash."
+            feedback = "Perfect Balance. Stable energy, zero crash."
             bonus_tag = "Zen Mode"
             
-        # 2. GOOD BUT HEAVY (The "Cheat Meal" trap)
+        # GOOD BUT HEAVY (The "Cheat Meal" trap)
         # Good macros but calories are blowing the budget (> 800)
         elif kcal > 800:
             xp = 60
-            feedback = "⚠️ Overshoot! Good nutrients, but watch the calorie surplus."
+            feedback = "Overshoot! Good nutrients, but watch the calorie surplus."
             bonus_tag = "Heavy"
             
-        # 3. STANDARD OKAY MEAL
+        # STANDARD OKAY MEAL
         elif p > 15 and f > 3:
             xp = 80
             feedback = "Solid choice. Keeps the engine running."
-            
-        # 4. POOR BALANCE
+        
+        # POOR BALANCE
         else:
             xp = 40
             feedback = "Unbalanced. Missing protein or fiber to sustain energy."
@@ -127,18 +128,18 @@ def update_history(score_data, meal_name):
     history.append(score_data)
     with open(history_path, "w") as f:
         json.dump(history, f, indent=4)
-    print(f"✅ Score saved to History: {history_path}")
+    print(f"Score saved to History: {history_path}")
 
 # --- MAIN EXECUTION ---
 if __name__ == "__main__":
-    print("🎮 Starting Game Engine...")
+    print("Starting Game Engine...")
     
     # 1. Load Raw Data
     raw_data = load_llm_data()
     if raw_data:
         # Change this manually to test logic: "Weight gain", "Maintenance"
         current_user_goal = "Weight loss"
-        print(f"📊 Analyzing '{raw_data['meal_name']}' for Goal: {current_user_goal}...")
+        print(f"Analyzing '{raw_data['meal_name']}' for Goal: {current_user_goal}...")
         # 2. Calculate Score
         score = calculate_nuno_score(raw_data["nutritional_metrics"], current_user_goal)
         # 3. Show Results

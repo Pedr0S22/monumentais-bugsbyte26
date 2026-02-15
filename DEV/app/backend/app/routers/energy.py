@@ -52,29 +52,33 @@ def get_energy(profile_id: int, db: Session = Depends(get_db)):
 
         crash_risk = battery < 40
         return schemas.BatteryRead(
+            code_status = 200,
             battery_level=battery,
             crash_risk=crash_risk,
             logged_at=logged_at,
             focus_time=focus_time,
-            burn_rate_per_hour=burn_rate
+            burn_rate_per_hour=burn_rate,
+            timestamp= datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         )
     
     # Fallback if no records exist yet
     return schemas.BatteryRead(
+        code_status=200,
         battery_level=100,
         crash_risk=False,
         logged_at=datetime.now(timezone.utc),
         focus_time=0.0,
-        burn_rate_per_hour=0.0
+        burn_rate_per_hour=0.0,
+        timestamp= datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     )
 
 @router.get("/{profile_id}/history", response_model=schemas.BatteryHistoryResponse)
 def get_energy_history(profile_id: int, db: Session = Depends(get_db)):
     query = text("""
         SELECT battery_level, logged_at, focus_time, burn_rate_per_hour
-        FROM battery 
+        FROM battery
         WHERE profile_id = :profile_id AND logged_at >= datetime('now', '-24 hours')
-        ORDER BY logged_at ASC
+        ORDER BY logged_at DESC
     """)
     results = db.execute(query, {"profile_id": profile_id}).fetchall()
     
@@ -94,4 +98,8 @@ def get_energy_history(profile_id: int, db: Session = Depends(get_db)):
             "burn_rate_per_hour": row[3]
         })
         
-    return schemas.BatteryHistoryResponse(history=history_list)
+    return schemas.BatteryHistoryResponse(
+        status_code = 200,
+        history=history_list,
+        timestamp= datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        )

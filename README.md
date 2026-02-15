@@ -67,6 +67,10 @@ Until code is committed, this repo holds the blueprint; check [DEV/app/README.md
 
 Monumentais Team BugsByte 2026 — see individual profiles in [PM/profiles](PM/profiles).
 
+## Disclaimer
+
+AI was used to build this project
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
