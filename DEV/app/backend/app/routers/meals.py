@@ -182,7 +182,7 @@ async def create_meal(
 @router.get("/{profile_id}/recent")
 def get_recent_meals(profile_id: int, db: Session = Depends(get_db)):
     query = text("""
-        SELECT meal, energy, hydration, fiber, saturated_fat, protein
+        SELECT meal, energy, hydration, fiber, saturated_fat, protein, mood
         FROM letty_historic
         WHERE profile_id = :profile_id
         ORDER BY logged_at DESC
@@ -203,6 +203,7 @@ def get_recent_meals(profile_id: int, db: Session = Depends(get_db)):
                 "saturated_fat": row.saturated_fat,
                 "protein": row.protein,
             },
+            "mood": row.mood,
             "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         })
     

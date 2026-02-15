@@ -2,12 +2,17 @@
 
 import { LettyAdvisor, type MascotMood } from "../lettyadvisor"
 
+// Updated to include the 'mood' property coming from the backend
 interface Meal {
-  id: string
-  name: string
-  protein: number
-  saturated_fat: number
-  hydration: number
+  meal: string
+  nutrition_values: {
+    energy: number
+    protein: number
+    saturated_fat?: number
+    hydration?: number
+    fiber?: number
+  }
+  mood?: string // <-- Added this
   timestamp: string
 }
 
@@ -17,18 +22,11 @@ interface HomeScreenProps {
     username: string
     membership: string
   }
-  meals?: Meal[] // Adicionamos a lista de refeições
+  meals?: Meal[] 
 }
 
 export function HomeScreen({ userData, meals = [] }: HomeScreenProps) {
   
-  // Função para determinar o humor da Letty baseado na saúde da refeição
-  const getMealMood = (meal: Meal): MascotMood => {
-    if (meal.saturated_fat > 10) return "sad";
-    if (meal.protein > 15 && meal.hydration > 50) return "happy";
-    return "meh";
-  }
-
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-6 bg-slate-50">
       {/* Profile card */}
@@ -44,39 +42,46 @@ export function HomeScreen({ userData, meals = [] }: HomeScreenProps) {
         </div>
       </div>
 
-      {/* Histórico de Refeições */}
+      {/* Histórico de Refeições (Last 3) */}
       <div className="flex flex-col gap-3">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Histórico de Refeições</h3>
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Últimas Refeições</h3>
         
         {meals.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-3xl border border-dashed border-slate-200">
             <p className="text-xs text-slate-400">Nenhuma refeição registada hoje.</p>
           </div>
         ) : (
-          meals.map((meal) => {
-            const mood = getMealMood(meal);
+          meals.slice(0, 3).map((item, index) => {
+            // Safely grab the backend mood (e.g. "Meh" -> "meh"). Fallback to "meh" if it's missing.
+            const rawMood = item.mood?.toLowerCase() || "meh"
+            const mood = (["happy", "sad", "meh"].includes(rawMood) ? rawMood : "meh") as MascotMood
+
             return (
-              <div key={meal.id} className="flex items-center justify-between rounded-3xl bg-white p-4 shadow-sm border border-slate-100">
-                <div className="flex flex-col gap-1">
-                  <span className="text-sm font-bold text-slate-800">{meal.name}</span>
-                  <div className="flex gap-2">
+              <div key={index} className="flex flex-col sm:flex-row items-start sm:items-center justify-between rounded-3xl bg-white p-4 shadow-sm border border-slate-100 gap-3">
+                <div className="flex flex-col gap-1 w-full overflow-hidden">
+                  <span className="text-sm font-bold text-slate-800 truncate" title={item.meal}>
+                    {item.meal}
+                  </span>
+                  
+                  {/* Shows Energy and Protein */}
+                  <div className="flex flex-wrap gap-4 mt-1">
+                    <div className="flex flex-col">
+                      <span className="text-[8px] text-slate-400 uppercase">Energia</span>
+                      <span className="text-xs font-semibold text-orange-500">
+                        {item.nutrition_values?.energy || 0} kcal
+                      </span>
+                    </div>
                     <div className="flex flex-col">
                       <span className="text-[8px] text-slate-400 uppercase">Proteína</span>
-                      <span className="text-xs font-semibold text-emerald-600">{meal.protein}g</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[8px] text-slate-400 uppercase">Gord. Sat.</span>
-                      <span className="text-xs font-semibold text-rose-500">{meal.saturated_fat}g</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[8px] text-slate-400 uppercase">Hidra.</span>
-                      <span className="text-xs font-semibold text-blue-500">{meal.hydration}%</span>
+                      <span className="text-xs font-semibold text-emerald-600">
+                        {item.nutrition_values?.protein || 0}g
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Letty Icon por Mood */}
-                <div className="flex items-center justify-center bg-slate-50 rounded-2xl p-2">
+                {/* Letty Icon uses the Backend Mood now */}
+                <div className="flex items-center justify-center bg-slate-50 rounded-2xl p-2 shrink-0 self-end sm:self-auto">
                   <LettyAdvisor mood={mood} size={40} />
                 </div>
               </div>
@@ -86,7 +91,7 @@ export function HomeScreen({ userData, meals = [] }: HomeScreenProps) {
       </div>
 
       {/* Line chart de progresso */}
-      <div className="rounded-3xl bg-white p-4 shadow-sm border border-slate-100">
+      <div className="rounded-3xl bg-white p-4 shadow-sm border border-slate-100 mt-2">
         <h3 className="mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Resumo de Progresso</h3>
         <svg viewBox="0 0 200 60" className="w-full h-20" aria-label="Progress chart">
           <polyline
@@ -101,4 +106,4 @@ export function HomeScreen({ userData, meals = [] }: HomeScreenProps) {
       </div>
     </div>
   )
-}
+} 
