@@ -85,8 +85,8 @@ async def create_meal(
         now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
         if not last_battery:
-            # Primeiro registo: Começa a 100%
-            new_level = 100
+            # Primeiro registo: Começa a 50%
+            new_level = 50
         else:
             # Calcular quanto a bateria desceu desde o último log
             last_time = datetime.strptime(last_battery.logged_at, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
